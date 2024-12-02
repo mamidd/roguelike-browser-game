@@ -48,10 +48,15 @@ export default {
       background: null,
       animationFrame: null,
       lastTime: 0,
-      fps: 60,
+      characterAnimationFps: 12,
       frameTimer: 0,
-      frameInterval: 1000/12
+      
     }
+  },
+  computed: {
+    frameInterval() {
+      return 1000/this.characterAnimationFps
+    },
   },
   async mounted() {
     const canvas = this.$refs.gameCanvas
