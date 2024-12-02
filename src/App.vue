@@ -23,10 +23,10 @@ export default {
       },
       minWidth: 320,
       minHeight: 480,
-      maxWidth: 800,
-      maxHeight: 600,
-      canvasWidth: 800,
-      canvasHeight: 600,
+      maxWidth: 1600,
+      maxHeight: 1200,
+      canvasWidth: 1600,
+      canvasHeight: 1200,
       tileSize: 16,
       tileBorder: 1,
       tilemapImage: null,
@@ -66,13 +66,11 @@ export default {
     const backgroundCanvas = this.$refs.backgroundCanvas
     this.gameCtx = gameCanvas.getContext('2d')
     this.backgroundCtx = backgroundCanvas.getContext('2d')
-    
-    // Carica la tilemap e genera la mappa
-    await this.loadTiles()
+  
     // Genera la mappa iniziale
     this.generateRandomMap()
     // Disegna la mappa di sfondo una sola volta
-    this.drawBackground()
+    await this.drawBackground()
 
     // Carica la sprite del personaggio
     await this.loadCharacterSprite()
@@ -81,7 +79,7 @@ export default {
     this.centerPlayer()
 
     // Imposta le dimensioni iniziali
-    this.updateCanvasSize()
+    await this.updateCanvasSize()
     
     // Event listeners per i tasti
     window.addEventListener('keydown', this.keyDown)
@@ -243,7 +241,10 @@ export default {
       const maxFrames = this.player.moving ? this.animationFrames.walk : this.animationFrames.idle
       this.player.frameX = (this.player.frameX + 1) % maxFrames
     },
-    drawBackground() {    
+    async drawBackground() {    
+      // Carica l'immagine dei Tiles
+      await this.loadTiles()
+
       // Pulisci il canvas di background
       this.backgroundCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
 
@@ -299,7 +300,7 @@ export default {
       this.drawSprite()
       this.animationFrame = requestAnimationFrame(this.animate)
     },
-    updateCanvasSize() {
+    async updateCanvasSize() {
       // Ottiene le dimensioni della viewport
       const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
       const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
@@ -315,11 +316,11 @@ export default {
         this.gameCtx.canvas.height = this.canvasHeight
         this.backgroundCtx.canvas.width = this.canvasWidth
         this.backgroundCtx.canvas.height = this.canvasHeight
-        
+
         // Rigenera la mappa con le nuove dimensioni
         this.generateRandomMap()
         // Ridisegna lo sfondo
-        this.drawBackground()
+        await this.drawBackground()
         // Centra il personaggio
         this.centerPlayer()
       }
@@ -348,8 +349,8 @@ export default {
 
 canvas {
   position: absolute;
-  max-width: 800px;
-  max-height: 600px;
+  max-width: 1600px;
+  max-height: 1200px;
   width: 100%;
   height: 100%;
   object-fit: contain;
