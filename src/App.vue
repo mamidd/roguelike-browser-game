@@ -62,9 +62,6 @@ export default {
     const canvas = this.$refs.gameCanvas
     this.ctx = canvas.getContext('2d')
     
-    // Imposta le dimensioni iniziali
-    this.updateCanvasSize()
-    
     // Aggiunge listener per il ridimensionamento
     window.addEventListener('resize', this.updateCanvasSize)
     
@@ -75,8 +72,11 @@ export default {
 
     // Carica la tilemap e genera la mappa
     await this.loadTiles()
-    this.resetMap()
-    
+    this.generateRandomMap()
+
+    // Imposta le dimensioni iniziali
+    this.updateCanvasSize()
+
     // Centra il personaggio
     this.centerPlayer()
     
@@ -101,12 +101,6 @@ export default {
       this.tilemapImage.src = '/tilemap.png'
       await this.tilemapImage.decode()
     },
-    resetMap() {
-      // Pulisce la mappa esistente
-      this.tiles = []
-      // Genera una nuova mappa
-      this.generateRandomMap()
-    },
     getTileCoordinates(tileIndex) {
       // Calcola le coordinate x,y nella tilemap
       const tilesPerRow = 12
@@ -117,6 +111,9 @@ export default {
       return { x, y }
     },
     generateRandomMap() {
+      // Pulisce la mappa esistente
+      this.tiles = []
+
       // Calcola il numero di tile necessari per riempire il canvas
       const tilesX = Math.ceil(this.canvasWidth / this.tileSize)
       const tilesY = Math.ceil(this.canvasHeight / this.tileSize)
@@ -299,7 +296,8 @@ export default {
         this.ctx.canvas.width = this.canvasWidth
         this.ctx.canvas.height = this.canvasHeight
         // Rigenera la mappa con le nuove dimensioni
-        this.resetMap()
+        this.generateRandomMap()
+        
         // Centra il personaggio
         this.centerPlayer()
       }
