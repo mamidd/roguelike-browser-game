@@ -1,0 +1,21 @@
+{
+  "name": "roguelike-browser-game",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "docker:build": "docker build -t mamidd/roguelike-browser-game .",
+    "docker:run": "docker run -d -p 8080:80 mamidd/roguelike-browser-game",
+    "docker:stop": "docker stop $(docker ps -q --filter ancestor=mamidd/roguelike-browser-game)",
+    "docker:start": "npm run docker:build && npm run docker:run"
+  },
+  "dependencies": {
+    "vue": "^3.3.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.2.3",
+    "vite": "^4.3.9"
+  }
+}
