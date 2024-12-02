@@ -1,6 +1,7 @@
 <template>
   <div class="game-container">
-    <canvas ref="gameCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
+    <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
+    <canvas id="gameCanvas" ref="gameCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
   </div>
 </template>
 
@@ -50,7 +51,8 @@ export default {
       lastTime: 0,
       characterAnimationFps: 12,
       frameTimer: 0,
-      
+      gameCtx: null,
+      backgroundCtx: null
     }
   },
   computed: {
@@ -59,30 +61,34 @@ export default {
     },
   },
   async mounted() {
-    const canvas = this.$refs.gameCanvas
-    this.ctx = canvas.getContext('2d')
+    // Inizializza i contesti dei canvas
+    const gameCanvas = this.$refs.gameCanvas
+    const backgroundCanvas = this.$refs.backgroundCanvas
+    this.gameCtx = gameCanvas.getContext('2d')
+    this.backgroundCtx = backgroundCanvas.getContext('2d')
     
-    // Aggiunge listener per il ridimensionamento
-    window.addEventListener('resize', this.updateCanvasSize)
-    
-    // Carica la sprite del personaggio
-    this.sprite = new Image()
-    this.sprite.src = '/sprite.png'
-    await this.sprite.decode()
-
     // Carica la tilemap e genera la mappa
     await this.loadTiles()
+    // Genera la mappa iniziale
     this.generateRandomMap()
+    // Disegna la mappa di sfondo una sola volta
+    this.drawBackground()
 
-    // Imposta le dimensioni iniziali
-    this.updateCanvasSize()
+    // Carica la sprite del personaggio
+    await this.loadCharacterSprite()
 
     // Centra il personaggio
     this.centerPlayer()
+
+    // Imposta le dimensioni iniziali
+    this.updateCanvasSize()
     
     // Event listeners per i tasti
     window.addEventListener('keydown', this.keyDown)
     window.addEventListener('keyup', this.keyUp)
+    
+    // Aggiunge listener per il ridimensionamento
+    window.addEventListener('resize', this.updateCanvasSize)
     
     // Avvia il game loop
     this.animate(0)
@@ -100,6 +106,12 @@ export default {
       this.tilemapImage = new Image()
       this.tilemapImage.src = '/tilemap.png'
       await this.tilemapImage.decode()
+    },
+    async loadCharacterSprite() {
+      // Carica la sprite del personaggio
+      this.sprite = new Image()
+      this.sprite.src = '/sprite.png'
+      await this.sprite.decode()
     },
     getTileCoordinates(tileIndex) {
       // Calcola le coordinate x,y nella tilemap
@@ -231,16 +243,17 @@ export default {
       const maxFrames = this.player.moving ? this.animationFrames.walk : this.animationFrames.idle
       this.player.frameX = (this.player.frameX + 1) % maxFrames
     },
-    drawSprite() {
-      this.ctx.clearRect(0, 0, this.$refs.gameCanvas.width, this.$refs.gameCanvas.height)
-      
-      // Disegna la mappa di tile
+    drawBackground() {    
+      // Pulisci il canvas di background
+      this.backgroundCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+
+      // Disegna la mappa di tile sul canvas di background
       for (let y = 0; y < this.tiles.length; y++) {
         for (let x = 0; x < this.tiles[y].length; x++) {
           const tileIndex = this.tiles[y][x]
           const { x: sourceX, y: sourceY } = this.getTileCoordinates(tileIndex)
           
-          this.ctx.drawImage(
+          this.backgroundCtx.drawImage(
             this.tilemapImage,
             sourceX,
             sourceY,
@@ -253,9 +266,13 @@ export default {
           )
         }
       }
+    },
+    drawSprite() {
+      // Pulisci il canvas del gioco
+      this.gameCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
 
-      // Disegna il personaggio
-      this.ctx.drawImage(
+      // Disegna solo il personaggio
+      this.gameCtx.drawImage(
         this.sprite,
         this.player.frameX * this.player.width,
         this.player.frameY * this.player.height,
@@ -291,13 +308,18 @@ export default {
       this.canvasWidth = Math.min(this.maxWidth, Math.max(this.minWidth, vw))
       this.canvasHeight = Math.min(this.maxHeight, Math.max(this.minHeight, vh))
 
-      // Se il canvas esiste, aggiorna il context
-      if (this.ctx) {
-        this.ctx.canvas.width = this.canvasWidth
-        this.ctx.canvas.height = this.canvasHeight
+      // Se i canvas esistono, aggiorna i context
+      if (this.gameCtx && this.backgroundCtx) {
+        // Aggiorna le dimensioni dei canvas
+        this.gameCtx.canvas.width = this.canvasWidth
+        this.gameCtx.canvas.height = this.canvasHeight
+        this.backgroundCtx.canvas.width = this.canvasWidth
+        this.backgroundCtx.canvas.height = this.canvasHeight
+        
         // Rigenera la mappa con le nuove dimensioni
         this.generateRandomMap()
-        
+        // Ridisegna lo sfondo
+        this.drawBackground()
         // Centra il personaggio
         this.centerPlayer()
       }
@@ -321,9 +343,11 @@ export default {
   overflow: hidden;
   margin: 0;
   padding: 0;
+  position: relative;
 }
 
 canvas {
+  position: absolute;
   max-width: 800px;
   max-height: 600px;
   width: 100%;
