@@ -21,17 +21,13 @@ export default {
         moving: false,
         lastDirection: 'down'
       },
-      canvasLandscapeSize: {
-        width: 1600,
-        height: 1200
-      },
-      canvasPortraitSize: {
-        width: 600,
-        height: 800
+      gameSize: {
+        width: 800,
+        height: 600
       },
       canvasSize: {
-        width: 1600,
-        height: 1200
+        width: 0,
+        height: 0
       },
       tileSize: 16,
       tileBorder: 1,
@@ -73,19 +69,12 @@ export default {
     this.gameCtx = gameCanvas.getContext('2d')
     this.backgroundCtx = backgroundCanvas.getContext('2d')
 
-    // Imposta le dimensioni iniziali del canvas
-    this.updateCanvasSize()
-
     // Carica gli assets
     await this.loadTiles()
     await this.loadCharacterSprite()
 
-    // Genera la mappa iniziale e la disegna
-    this.generateRandomMap()
-    this.drawBackground()
-
-    // Centra il personaggio
-    this.centerPlayer()
+    // Imposta le dimensioni iniziali del canvas
+    this.updateCanvasSize()
     
     // Event listeners per i tasti
     window.addEventListener('keydown', this.keyDown)
@@ -303,7 +292,7 @@ export default {
     },
     updateCanvasSize() {
       // Imposta le dimensioni del canvas in base alla dimensione della viewport
-      this.setCanvasSize(this.calculateCanvasSizeFromViewport())
+      this.setCanvasSize()
 
       // Se i canvas esistono, aggiorna i context
       if (this.gameCtx && this.backgroundCtx) {
@@ -325,17 +314,20 @@ export default {
         height: Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
       }
     },
-    calculateCanvasSizeFromViewport() {
+    setCanvasSize() {
       // Ottieni le dimensioni della viewport
       const {width: vw, height: vh} = this.getViewportSize()
 
       // Se la viewport é più alta che larga (modalità portrait)
       const isPortrait = vh > vw
-      const newSize = isPortrait ? this.canvasPortraitSize : this.canvasLandscapeSize
-      return newSize
-    },
-    setCanvasSize(newCanvasSize) {
-      this.canvasSize = newCanvasSize
+      
+      // In modalità portrait invertiamo width e height del gioco
+      const newSize = {
+        width: isPortrait ? this.gameSize.height : this.gameSize.width,
+        height: isPortrait ? this.gameSize.width : this.gameSize.height
+      }
+      
+      this.canvasSize = newSize
     },
     changeCanvasSize(ctx) {
       ctx.canvas.width = this.canvasSize.width
