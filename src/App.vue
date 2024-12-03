@@ -1,7 +1,7 @@
 <template>
   <div class="game-container">
-    <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
-    <canvas id="gameCanvas" ref="gameCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
+    <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
+    <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
   </div>
 </template>
 
@@ -21,12 +21,18 @@ export default {
         moving: false,
         lastDirection: 'down'
       },
-      minWidth: 320,
-      minHeight: 480,
-      maxWidth: 1600,
-      maxHeight: 1200,
-      canvasWidth: 1600,
-      canvasHeight: 1200,
+      canvasLandscapeSize: {
+        width: 1600,
+        height: 1200
+      },
+      canvasPortraitSize: {
+        width: 600,
+        height: 800
+      },
+      canvasSize: {
+        width: 1600,
+        height: 1200
+      },
       tileSize: 16,
       tileBorder: 1,
       tilemapImage: null,
@@ -67,6 +73,9 @@ export default {
     this.gameCtx = gameCanvas.getContext('2d')
     this.backgroundCtx = backgroundCanvas.getContext('2d')
 
+    // Imposta le dimensioni iniziali del canvas
+    this.updateCanvasSize()
+
     // Carica gli assets
     await this.loadTiles()
     await this.loadCharacterSprite()
@@ -79,18 +88,18 @@ export default {
     this.centerPlayer()
     
     // Event listeners per i tasti
-    window.addEventListener('resize', this.updateCanvasSize)
     window.addEventListener('keydown', this.keyDown)
     window.addEventListener('keyup', this.keyUp)
+    window.addEventListener('resize', this.updateCanvasSize)
     
     // Avvia il game loop
     this.animate(0)
   },
   beforeUnmount() {
     // Rimuove gli event listener quando il componente viene distrutto
-    window.removeEventListener('resize', this.updateCanvasSize)
     window.removeEventListener('keydown', this.keyDown)
     window.removeEventListener('keyup', this.keyUp)
+    window.removeEventListener('resize', this.updateCanvasSize)
     cancelAnimationFrame(this.animationFrame)
   },
   methods: {
@@ -120,8 +129,8 @@ export default {
       this.tiles = []
 
       // Calcola il numero di tile necessari per riempire il canvas
-      const tilesX = Math.ceil(this.canvasWidth / this.tileSize)
-      const tilesY = Math.ceil(this.canvasHeight / this.tileSize)
+      const tilesX = Math.ceil(this.canvasSize.width / this.tileSize)
+      const tilesY = Math.ceil(this.canvasSize.height / this.tileSize)
       
       // Genera una mappa casuale
       for (let y = 0; y < tilesY; y++) {
@@ -196,8 +205,8 @@ export default {
         let newY = this.player.y + dy
 
         // Limita il movimento ai bordi del canvas
-        newX = Math.max(0, Math.min(newX, this.canvasWidth - this.player.width))
-        newY = Math.max(0, Math.min(newY, this.canvasHeight - this.player.height))
+        newX = Math.max(0, Math.min(newX, this.canvasSize.width - this.player.width))
+        newY = Math.max(0, Math.min(newY, this.canvasSize.height - this.player.height))
 
         // Aggiorna la posizione
         this.player.x = newX
@@ -238,7 +247,7 @@ export default {
     },
     drawBackground() {    
       // Pulisci il canvas di background
-      this.backgroundCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+      this.backgroundCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
 
       // Disegna la mappa di tile sul canvas di background
       for (let y = 0; y < this.tiles.length; y++) {
@@ -262,7 +271,7 @@ export default {
     },
     drawSprite() {
       // Pulisci il canvas del gioco
-      this.gameCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
+      this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
 
       // Disegna solo il personaggio
       this.gameCtx.drawImage(
@@ -292,22 +301,15 @@ export default {
       this.drawSprite()
       this.animationFrame = requestAnimationFrame(this.animate)
     },
-    async updateCanvasSize() {
-      // Ottiene le dimensioni della viewport
-      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0)
-      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
-
-      // Calcola le nuove dimensioni mantenendo le proporzioni e i limiti
-      this.canvasWidth = Math.min(this.maxWidth, Math.max(this.minWidth, vw))
-      this.canvasHeight = Math.min(this.maxHeight, Math.max(this.minHeight, vh))
+    updateCanvasSize() {
+      // Imposta le dimensioni del canvas in base alla dimensione della viewport
+      this.setCanvasSize(this.calculateCanvasSizeFromViewport())
 
       // Se i canvas esistono, aggiorna i context
       if (this.gameCtx && this.backgroundCtx) {
         // Aggiorna le dimensioni dei canvas
-        this.gameCtx.canvas.width = this.canvasWidth
-        this.gameCtx.canvas.height = this.canvasHeight
-        this.backgroundCtx.canvas.width = this.canvasWidth
-        this.backgroundCtx.canvas.height = this.canvasHeight
+        this.changeCanvasSize(this.gameCtx)
+        this.changeCanvasSize(this.backgroundCtx)
 
         // Rigenera la mappa con le nuove dimensioni
         this.generateRandomMap()
@@ -317,10 +319,32 @@ export default {
         this.centerPlayer()
       }
     },
+    getViewportSize() {
+      return {
+        width: Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
+        height: Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
+      }
+    },
+    calculateCanvasSizeFromViewport() {
+      // Ottieni le dimensioni della viewport
+      const {width: vw, height: vh} = this.getViewportSize()
+
+      // Se la viewport é più alta che larga (modalità portrait)
+      const isPortrait = vh > vw
+      const newSize = isPortrait ? this.canvasPortraitSize : this.canvasLandscapeSize
+      return newSize
+    },
+    setCanvasSize(newCanvasSize) {
+      this.canvasSize = newCanvasSize
+    },
+    changeCanvasSize(ctx) {
+      ctx.canvas.width = this.canvasSize.width
+      ctx.canvas.height = this.canvasSize.height
+    },
     centerPlayer() {
       // Calcola il centro del canvas
-      this.player.x = (this.canvasWidth - this.player.width) / 2
-      this.player.y = (this.canvasHeight - this.player.height) / 2
+      this.player.x = (this.canvasSize.width - this.player.width) / 2
+      this.player.y = (this.canvasSize.height - this.player.height) / 2
     },
   }
 }
@@ -341,8 +365,6 @@ export default {
 
 canvas {
   position: absolute;
-  max-width: 1600px;
-  max-height: 1200px;
   width: 100%;
   height: 100%;
   object-fit: contain;
