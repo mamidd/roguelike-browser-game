@@ -66,27 +66,22 @@ export default {
     const backgroundCanvas = this.$refs.backgroundCanvas
     this.gameCtx = gameCanvas.getContext('2d')
     this.backgroundCtx = backgroundCanvas.getContext('2d')
-  
-    // Genera la mappa iniziale
-    this.generateRandomMap()
-    // Disegna la mappa di sfondo una sola volta
-    await this.drawBackground()
 
-    // Carica la sprite del personaggio
+    // Carica gli assets
+    await this.loadTiles()
     await this.loadCharacterSprite()
+
+    // Genera la mappa iniziale e la disegna
+    this.generateRandomMap()
+    this.drawBackground()
 
     // Centra il personaggio
     this.centerPlayer()
-
-    // Imposta le dimensioni iniziali
-    await this.updateCanvasSize()
     
     // Event listeners per i tasti
+    window.addEventListener('resize', this.updateCanvasSize)
     window.addEventListener('keydown', this.keyDown)
     window.addEventListener('keyup', this.keyUp)
-    
-    // Aggiunge listener per il ridimensionamento
-    window.addEventListener('resize', this.updateCanvasSize)
     
     // Avvia il game loop
     this.animate(0)
@@ -102,13 +97,13 @@ export default {
     async loadTiles() {
       // Carica la tilemap
       this.tilemapImage = new Image()
-      this.tilemapImage.src = '/tilemap.png'
+      this.tilemapImage.src = new URL(`./assets/tilemap.png`, import.meta.url).href
       await this.tilemapImage.decode()
     },
     async loadCharacterSprite() {
       // Carica la sprite del personaggio
       this.sprite = new Image()
-      this.sprite.src = '/sprite.png'
+      this.sprite.src = new URL(`./assets/sprite.png`, import.meta.url).href
       await this.sprite.decode()
     },
     getTileCoordinates(tileIndex) {
@@ -241,10 +236,7 @@ export default {
       const maxFrames = this.player.moving ? this.animationFrames.walk : this.animationFrames.idle
       this.player.frameX = (this.player.frameX + 1) % maxFrames
     },
-    async drawBackground() {    
-      // Carica l'immagine dei Tiles
-      await this.loadTiles()
-
+    drawBackground() {    
       // Pulisci il canvas di background
       this.backgroundCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
 
@@ -319,8 +311,8 @@ export default {
 
         // Rigenera la mappa con le nuove dimensioni
         this.generateRandomMap()
-        // Ridisegna lo sfondo
-        await this.drawBackground()
+        // Ridisegna lo sfondo nel prossimo tick per essere sicuri di avere la sprite disponibile nel render loop del browser
+        requestAnimationFrame(this.drawBackground)
         // Centra il personaggio
         this.centerPlayer()
       }
