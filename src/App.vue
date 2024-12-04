@@ -24,7 +24,7 @@ export default {
       },
       gameSize: {
         width: 800,
-        height: 600
+        height: 640
       },
       canvasSize: {
         width: 0,
@@ -119,6 +119,43 @@ export default {
       const y = Math.floor(tileIndex / tilesPerRow) * tileWithBorder
       return { x, y }
     },
+    isColliding(x, y, width, height) {
+      // Calcola l'area dei piedi (2 tile centrali della quarta riga)
+      const feetX = x + this.tileSize  // salta il primo tile
+      const feetY = y + this.tileSize * 3  // prendi l'ultima riga
+      const feetWidth = this.tileSize * 2  // larghezza di 2 tile
+      const feetHeight = this.tileSize  // altezza di 1 tile
+
+      // Controlla se le colonne centrali del player sono fuori dalla mappa
+      const playerCenterX = x + this.tileSize  // inizio delle colonne centrali
+      const playerFullHeight = height  // altezza totale del player
+      const centerTileStartX = Math.floor(playerCenterX / this.tileSize)
+      const centerTileEndX = Math.floor((playerCenterX + this.tileSize * 2) / this.tileSize)
+      const tileStartY = Math.floor(y / this.tileSize)
+      const tileEndY = Math.floor((y + playerFullHeight) / this.tileSize)
+
+      // Controlla se le colonne centrali sono fuori dalla mappa
+      if (tileStartY < 0 || tileEndY >= this.objectTiles.length || 
+          centerTileStartX < 0 || centerTileEndX >= this.objectTiles[0].length) {
+        return true
+      }
+
+      // Converti le coordinate dei piedi in coordinate della griglia per il controllo delle collisioni con oggetti
+      const startTileX = Math.floor(feetX / this.tileSize)
+      const startTileY = Math.floor(feetY / this.tileSize)
+      const endTileX = Math.floor((feetX + feetWidth) / this.tileSize)
+      const endTileY = Math.floor((feetY + feetHeight) / this.tileSize)
+
+      // Controlla tutte le tile che intersecano i piedi del player
+      for (let tileY = startTileY; tileY <= endTileY; tileY++) {
+        for (let tileX = startTileX; tileX <= endTileX; tileX++) {
+          if (this.objectTiles[tileY][tileX] !== -1) {
+            return true
+          }
+        }
+      }
+      return false
+    },
     generateRandomMap() {
       // Pulisce la mappa esistente
       this.tiles = []
@@ -194,63 +231,50 @@ export default {
       }
     },
     movePlayer() {
-      let dx = 0
-      let dy = 0
+      let newX = this.player.x
+      let newY = this.player.y
+      this.player.moving = false
 
-      if (this.keys.w) dy -= this.player.speed
-      if (this.keys.s) dy += this.player.speed
-      if (this.keys.a) dx -= this.player.speed
-      if (this.keys.d) dx += this.player.speed
-
-      // Normalizza la velocità in diagonale
-      if (dx !== 0 && dy !== 0) {
-        const factor = 1 / Math.sqrt(2)
-        dx *= factor
-        dy *= factor
+      if (this.keys.w) {
+        newY -= this.player.speed
+        this.player.moving = true
+        this.player.lastDirection = 'up'
+      }
+      if (this.keys.s) {
+        newY += this.player.speed
+        this.player.moving = true
+        this.player.lastDirection = 'down'
+      }
+      if (this.keys.a) {
+        newX -= this.player.speed
+        this.player.moving = true
+        this.player.lastDirection = 'left'
+      }
+      if (this.keys.d) {
+        newX += this.player.speed
+        this.player.moving = true
+        this.player.lastDirection = 'right'
       }
 
-      if (dx !== 0 || dy !== 0) {
-        this.player.moving = true
-        
-        // Calcola la nuova posizione
-        let newX = this.player.x + dx
-        let newY = this.player.y + dy
+      // Controlla le collisioni per l'intera area del player
+      const checkCollision = (x, y) => {
+        return this.isColliding(x, y, this.player.width, this.player.height)
+      }
 
-        // Limita il movimento ai bordi del canvas
-        newX = Math.max(0, Math.min(newX, this.canvasSize.width - this.player.width))
-        newY = Math.max(0, Math.min(newY, this.canvasSize.height - this.player.height))
-
-        // Aggiorna la posizione
+      // Applica il movimento solo se non ci sono collisioni
+      if (!checkCollision(newX, newY)) {
         this.player.x = newX
         this.player.y = newY
-
-        // Determina la direzione della sprite in base al movimento
-        if (Math.abs(dx) > Math.abs(dy)) {
-          // Movimento orizzontale predominante
-          this.player.frameY = dx > 0 ? 11 : 9  // 11 per destra, 9 per sinistra
-          this.player.lastDirection = dx > 0 ? 'right' : 'left'
-        } else {
-          // Movimento verticale predominante
-          this.player.frameY = dy > 0 ? 10 : 8  // 10 per giù, 8 per su
-          this.player.lastDirection = dy > 0 ? 'down' : 'up'
-        }
       } else {
+        // Se c'è una collisione, il player si ferma
         this.player.moving = false
-        // Imposta l'animazione idle in base all'ultima direzione
-        switch(this.player.lastDirection) {
-          case 'up':
-            this.player.frameY = 12
-            break
-          case 'left':
-            this.player.frameY = 13
-            break
-          case 'down':
-            this.player.frameY = 14
-            break
-          case 'right':
-            this.player.frameY = 15
-            break
-        }
+      }
+
+      // Aggiorna il frame dell'animazione
+      if (this.player.moving) {
+        this.handlePlayerFrame()
+      } else {
+        this.player.frameX = 0
       }
     },
     handlePlayerFrame() {
@@ -310,7 +334,23 @@ export default {
       // Pulisci il canvas del gioco
       this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
 
-      // Disegna solo il personaggio
+      // Disegna il bordo della hitbox dei piedi
+      this.gameCtx.strokeStyle = 'red'
+      this.gameCtx.lineWidth = 1
+      this.gameCtx.strokeRect(
+        this.player.x + this.tileSize,  // x + 16 (salta il primo tile)
+        this.player.y + this.tileSize * 3,  // y + 48 (prendi l'ultima riga)
+        this.tileSize * 2,  // larghezza di 2 tile (32px)
+        this.tileSize  // altezza di 1 tile (16px)
+      )
+      // Disegna il bordo della hitbox del personaggio
+      this.gameCtx.strokeStyle = 'black'
+      this.gameCtx.lineWidth = 2
+      this.gameCtx.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height)
+
+
+
+      // Disegna il personaggio
       this.gameCtx.drawImage(
         this.sprite,
         this.player.frameX * this.player.width,
