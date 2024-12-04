@@ -67,37 +67,28 @@ export default {
     },
   },
   async mounted() {
-    // Inizializza i contesti dei canvas
-    const gameCanvas = this.$refs.gameCanvas
-    const backgroundCanvas = this.$refs.backgroundCanvas
-    const objectsCanvas = this.$refs.objectsCanvas
-    this.gameCtx = gameCanvas.getContext('2d')
-    this.backgroundCtx = backgroundCanvas.getContext('2d')
-    this.objectsCtx = objectsCanvas.getContext('2d')
+    this.initializeCanvas()
 
-    // Carica gli assets
-    await this.loadTiles()
-    await this.loadCharacterSprite()
+    await this.loadAssets()
 
     // Imposta le dimensioni iniziali del canvas
     this.updateCanvasSize()
     
-    // Event listeners per i tasti
-    window.addEventListener('keydown', this.keyDown)
-    window.addEventListener('keyup', this.keyUp)
-    window.addEventListener('resize', this.updateCanvasSize)
-    
+    this.addEventListner()
+
     // Avvia il game loop
     this.animate(0)
   },
   beforeUnmount() {
-    // Rimuove gli event listener quando il componente viene distrutto
-    window.removeEventListener('keydown', this.keyDown)
-    window.removeEventListener('keyup', this.keyUp)
-    window.removeEventListener('resize', this.updateCanvasSize)
+    this.removeEventListner()
     cancelAnimationFrame(this.animationFrame)
   },
   methods: {
+    async loadAssets() {
+      // Carica gli assets
+      await this.loadTiles()
+      await this.loadCharacterSprite()
+    },
     async loadTiles() {
       // Carica la tilemap
       this.tilemapImage = new Image()
@@ -109,6 +100,27 @@ export default {
       this.sprite = new Image()
       this.sprite.src = new URL(`./assets/sprite.png`, import.meta.url).href
       await this.sprite.decode()
+    },
+    initializeCanvas() {
+      // Inizializza i contesti dei canvas
+      const gameCanvas = this.$refs.gameCanvas
+      const backgroundCanvas = this.$refs.backgroundCanvas
+      const objectsCanvas = this.$refs.objectsCanvas
+      this.gameCtx = gameCanvas.getContext('2d')
+      this.backgroundCtx = backgroundCanvas.getContext('2d')
+      this.objectsCtx = objectsCanvas.getContext('2d')
+    },
+    addEventListner() {
+      // Event listeners per i tasti
+      window.addEventListener('keydown', this.keyDown)
+      window.addEventListener('keyup', this.keyUp)
+      window.addEventListener('resize', this.updateCanvasSize)
+    },
+    removeEventListner() {
+      // Rimuove gli event listener
+      window.removeEventListener('keydown', this.keyDown)
+      window.removeEventListener('keyup', this.keyUp)
+      window.removeEventListener('resize', this.updateCanvasSize)
     },
     getTileCoordinates(tileIndex) {
       // Calcola le coordinate x,y nella tilemap
@@ -229,13 +241,8 @@ export default {
     movePlayer() {
       const { newX, newY } = this.calculateMovement(this.keys)
 
-      // Controlla le collisioni per l'intera area del player
-      const checkCollision = (x, y) => {
-        return this.isColliding(x, y, this.player.width, this.player.height)
-      }
-
       // Applica il movimento solo se non ci sono collisioni
-      if (!checkCollision(newX, newY)) {
+      if (!this.isColliding(newX, newY, this.player.width, this.player.height)) {
         this.player.x = newX
         this.player.y = newY
       } else {
@@ -245,7 +252,6 @@ export default {
 
       // Aggiorna l'animazione del personaggio
       this.setAnimationType(this.player.lastDirection, this.player.moving)
-      
     },
     calculateMovement(keys) {
       let newX = this.player.x
