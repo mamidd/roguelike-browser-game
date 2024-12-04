@@ -1,6 +1,7 @@
 <template>
   <div class="game-container">
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
+    <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
   </div>
 </template>
@@ -33,9 +34,11 @@ export default {
       tileBorder: 1,
       tilemapImage: null,
       tiles: [],
+      objectTiles: [],
       availableTiles: {
         ground: [0, 1, 2],
-        decoration: [39,40,41,42,43]
+        decoration: [39,40,41,42,43],
+        objects: [27,28,29]
       },
       keys: {
         w: false,
@@ -54,7 +57,8 @@ export default {
       characterAnimationFps: 12,
       frameTimer: 0,
       gameCtx: null,
-      backgroundCtx: null
+      backgroundCtx: null,
+      objectsCtx: null
     }
   },
   computed: {
@@ -66,8 +70,10 @@ export default {
     // Inizializza i contesti dei canvas
     const gameCanvas = this.$refs.gameCanvas
     const backgroundCanvas = this.$refs.backgroundCanvas
+    const objectsCanvas = this.$refs.objectsCanvas
     this.gameCtx = gameCanvas.getContext('2d')
     this.backgroundCtx = backgroundCanvas.getContext('2d')
+    this.objectsCtx = objectsCanvas.getContext('2d')
 
     // Carica gli assets
     await this.loadTiles()
@@ -116,6 +122,7 @@ export default {
     generateRandomMap() {
       // Pulisce la mappa esistente
       this.tiles = []
+      this.objectTiles = []
 
       // Calcola il numero di tile necessari per riempire il canvas
       const tilesX = Math.ceil(this.canvasSize.width / this.tileSize)
@@ -124,14 +131,30 @@ export default {
       // Genera una mappa casuale
       for (let y = 0; y < tilesY; y++) {
         const row = []
+        const objectRow = []
         for (let x = 0; x < tilesX; x++) {
-          // 90% probabilità di tile ground, 10% di decoration
-          const useDecoration = Math.random() < 0.1
-          const tileArray = useDecoration ? this.availableTiles.decoration : this.availableTiles.ground
-          const randomIndex = Math.floor(Math.random() * tileArray.length)
-          row.push(tileArray[randomIndex])
+          // Determina il tipo di tile da generare
+          const rand = Math.random()
+          let tileArray
+          if (rand < 0.01) { // 1% probabilità di oggetti fisici
+            tileArray = this.availableTiles.objects
+            const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
+            objectRow.push(tileIndex)
+            row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
+          } else if (rand < 0.11) { // 10% probabilità di decorazioni
+            tileArray = this.availableTiles.decoration
+            const randomIndex = Math.floor(Math.random() * tileArray.length)
+            row.push(tileArray[randomIndex])
+            objectRow.push(-1)
+          } else { // 80% probabilità di terreno
+            tileArray = this.availableTiles.ground
+            const randomIndex = Math.floor(Math.random() * tileArray.length)
+            row.push(tileArray[randomIndex])
+            objectRow.push(-1)
+          }
         }
         this.tiles.push(row)
+        this.objectTiles.push(objectRow)
       }
     },
     keyDown(e) {
@@ -258,6 +281,31 @@ export default {
         }
       }
     },
+    drawObjects() {
+      // Pulisci il canvas degli oggetti
+      this.objectsCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
+
+      // Disegna gli oggetti
+      for (let y = 0; y < this.objectTiles.length; y++) {
+        for (let x = 0; x < this.objectTiles[y].length; x++) {
+          const tileIndex = this.objectTiles[y][x]
+          if (tileIndex !== -1) {
+            const { x: srcX, y: srcY } = this.getTileCoordinates(tileIndex)
+            this.objectsCtx.drawImage(
+              this.tilemapImage,
+              srcX,
+              srcY,
+              this.tileSize,
+              this.tileSize,
+              x * this.tileSize,
+              y * this.tileSize,
+              this.tileSize,
+              this.tileSize
+            )
+          }
+        }
+      }
+    },
     drawSprite() {
       // Pulisci il canvas del gioco
       this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
@@ -295,15 +343,17 @@ export default {
       this.setCanvasSize()
 
       // Se i canvas esistono, aggiorna i context
-      if (this.gameCtx && this.backgroundCtx) {
+      if (this.gameCtx && this.backgroundCtx && this.objectsCtx) {
         // Aggiorna le dimensioni dei canvas
         this.changeCanvasSize(this.gameCtx)
         this.changeCanvasSize(this.backgroundCtx)
+        this.changeCanvasSize(this.objectsCtx)
 
         // Rigenera la mappa con le nuove dimensioni
         this.generateRandomMap()
         // Ridisegna lo sfondo nel prossimo tick per essere sicuri di avere la sprite disponibile nel render loop del browser
         requestAnimationFrame(this.drawBackground)
+        requestAnimationFrame(this.drawObjects)
         // Centra il personaggio
         this.centerPlayer()
       }
@@ -344,22 +394,29 @@ export default {
 
 <style>
 .game-container {
+  position: relative;
   width: 100%;
   height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   overflow: hidden;
-  margin: 0;
-  padding: 0;
-  position: relative;
 }
 
 canvas {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#backgroundCanvas {
+  z-index: 1;
+}
+
+#objectsCanvas {
+  z-index: 2;
+}
+
+#gameCanvas {
+  z-index: 3;
 }
 
 /* Reset CSS per rimuovere margini e padding di default */
