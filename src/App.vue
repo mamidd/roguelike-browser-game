@@ -198,19 +198,15 @@ export default {
       switch(e.key.toLowerCase()) {
         case 'w':
           this.keys.w = true
-          this.player.frameY = 8
           break
         case 's':
           this.keys.s = true
-          this.player.frameY = 10
           break
         case 'a':
           this.keys.a = true
-          this.player.frameY = 9
           break
         case 'd':
           this.keys.d = true
-          this.player.frameY = 11
           break
       }
     },
@@ -231,30 +227,7 @@ export default {
       }
     },
     movePlayer() {
-      let newX = this.player.x
-      let newY = this.player.y
-      this.player.moving = false
-
-      if (this.keys.w) {
-        newY -= this.player.speed
-        this.player.moving = true
-        this.player.lastDirection = 'up'
-      }
-      if (this.keys.s) {
-        newY += this.player.speed
-        this.player.moving = true
-        this.player.lastDirection = 'down'
-      }
-      if (this.keys.a) {
-        newX -= this.player.speed
-        this.player.moving = true
-        this.player.lastDirection = 'left'
-      }
-      if (this.keys.d) {
-        newX += this.player.speed
-        this.player.moving = true
-        this.player.lastDirection = 'right'
-      }
+      const { newX, newY } = this.calculateMovement(this.keys)
 
       // Controlla le collisioni per l'intera area del player
       const checkCollision = (x, y) => {
@@ -270,11 +243,51 @@ export default {
         this.player.moving = false
       }
 
-      // Aggiorna il frame dell'animazione
-      if (this.player.moving) {
-        this.handlePlayerFrame()
-      } else {
-        this.player.frameX = 0
+      // Aggiorna l'animazione del personaggio
+      this.setAnimationType(this.player.lastDirection, this.player.moving)
+      
+    },
+    calculateMovement(keys) {
+      let newX = this.player.x
+      let newY = this.player.y
+      this.player.moving = false
+
+      if (keys.w || keys.s || keys.a || keys.d) {
+        this.player.moving = true
+        if (keys.w) {
+          newY -= this.player.speed
+          this.player.lastDirection = 'up'
+        }
+        if (keys.s) {
+          newY += this.player.speed
+          this.player.lastDirection = 'down'
+        }
+        if (keys.a) {
+          newX -= this.player.speed
+          this.player.lastDirection = 'left'
+        }
+        if (keys.d) {
+          newX += this.player.speed
+          this.player.lastDirection = 'right'
+        }
+      }
+
+      return { newX, newY }
+    },
+    setAnimationType(lastDirection, isMoving) {
+      switch(lastDirection) {
+        case 'up':
+          this.player.frameY = isMoving ? 8 : 12
+          break
+        case 'left':
+          this.player.frameY = isMoving ? 9 : 13
+          break
+        case 'down':
+          this.player.frameY = isMoving ? 10 : 14
+          break
+        case 'right':
+          this.player.frameY = isMoving ? 11 : 15
+          break
       }
     },
     handlePlayerFrame() {
