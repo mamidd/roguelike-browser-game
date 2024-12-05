@@ -3,6 +3,9 @@
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
+    <div v-if="showGameOver" class="completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+      <div class="completion-message">Complimenti! Hai raccolto tutti i materiali</div>
+    </div>
   </div>
 </template>
 
@@ -35,6 +38,7 @@ export default {
       tilemapImage: null,
       tiles: [],
       objectTiles: [],
+      totalObjects: 0,
       availableTiles: {
         ground: [0, 1, 2],
         decoration: [39,40,41,42,43],
@@ -58,7 +62,8 @@ export default {
       frameTimer: 0,
       gameCtx: null,
       backgroundCtx: null,
-      objectsCtx: null
+      objectsCtx: null,
+      showGameOver: false,
     }
   },
   computed: {
@@ -80,8 +85,7 @@ export default {
     this.animate(0)
   },
   beforeUnmount() {
-    this.removeEventListner()
-    cancelAnimationFrame(this.animationFrame)
+    this.handleGameOver()
   },
   methods: {
     async loadAssets() {
@@ -162,16 +166,39 @@ export default {
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
           if (this.objectTiles[tileY][tileX] !== -1) {
+            // Rimuovi l'oggetto quando c'è una collisione
+            this.objectTiles[tileY][tileX] = -1
+            // Pulisci il tile dal canvas degli oggetti
+            this.clearObjectTile(tileX, tileY)
+            // Decrementa il contatore degli oggetti
+            this.totalObjects--
+            // Controlla se tutti gli oggetti sono stati rimossi
+            if (this.totalObjects === 0) {
+              requestAnimationFrame(() => {
+                this.handleGameOver()
+              })
+            }
             return true
           }
         }
       }
+
       return false
+    },
+    clearObjectTile(tileX, tileY) {
+      // Pulisci il tile specifico nel canvas degli oggetti
+      this.objectsCtx.clearRect(
+        tileX * this.tileSize,
+        tileY * this.tileSize,
+        this.tileSize,
+        this.tileSize
+      )
     },
     generateRandomMap() {
       // Pulisce la mappa esistente
       this.tiles = []
       this.objectTiles = []
+      this.totalObjects = 0
 
       // Calcola il numero di tile necessari per riempire il canvas
       const tilesX = Math.ceil(this.canvasSize.width / this.tileSize)
@@ -185,10 +212,11 @@ export default {
           // Determina il tipo di tile da generare
           const rand = Math.random()
           let tileArray
-          if (rand < 0.01) { // 1% probabilità di oggetti fisici
+          if (rand < 0.01 && y > 3) { // 1% probabilità di oggetti fisici
             tileArray = this.availableTiles.objects
             const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
             objectRow.push(tileIndex)
+            this.totalObjects++
             row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
           } else if (rand < 0.11) { // 10% probabilità di decorazioni
             tileArray = this.availableTiles.decoration
@@ -447,6 +475,30 @@ export default {
       this.player.x = (this.canvasSize.width - this.player.width) / 2
       this.player.y = (this.canvasSize.height - this.player.height) / 2
     },
+    handleGameOver() {
+      // Mostra l'overlay di completamento
+      this.showGameOver = true
+      
+      // Rimuovi i listener degli eventi
+      this.removeEventListner()
+      
+      // Stoppa l'animazione
+      if (this.animationFrame) {
+        cancelAnimationFrame(this.animationFrame)
+        this.animationFrame = null
+      }
+      
+      // Resetta i tasti premuti
+      this.keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false
+      }
+      
+      // Ferma il movimento del player
+      this.player.moving = false
+    },
   }
 }
 </script>
@@ -476,6 +528,25 @@ canvas {
 
 #gameCanvas {
   z-index: 3;
+}
+
+.completion-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 4;
+}
+
+.completion-message {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
 }
 
 /* Reset CSS per rimuovere margini e padding di default */
