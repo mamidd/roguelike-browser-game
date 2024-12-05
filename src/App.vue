@@ -48,7 +48,8 @@ export default {
         w: false,
         a: false,
         s: false,
-        d: false
+        d: false,
+        e: false
       },
       animationFrames: {
         walk: 9,
@@ -247,14 +248,18 @@ export default {
         case 'w':
           this.keys.w = true
           break
-        case 's':
-          this.keys.s = true
-          break
         case 'a':
           this.keys.a = true
           break
+        case 's':
+          this.keys.s = true
+          break
         case 'd':
           this.keys.d = true
+          break
+        case 'e':
+          this.keys.e = true
+          this.checkObjectInDirection()
           break
       }
     },
@@ -263,15 +268,83 @@ export default {
         case 'w':
           this.keys.w = false
           break
-        case 's':
-          this.keys.s = false
-          break
         case 'a':
           this.keys.a = false
+          break
+        case 's':
+          this.keys.s = false
           break
         case 'd':
           this.keys.d = false
           break
+        case 'e':
+          this.keys.e = false
+          break
+      }
+    },
+    checkObjectInDirection() {
+      // Calcola il centro dei piedi del player
+      const centerX = this.player.x + this.tileSize * 2  // centro dei due tile dei piedi
+      const centerY = this.player.y + this.tileSize * 3.5  // centro verticale del tile dei piedi
+
+      // Definisci l'area di controllo in base alla direzione
+      let tilesToCheck = []
+
+      switch(this.player.lastDirection) {
+        case 'up':
+          // Controlla una riga sopra il player
+          const upStartX = Math.round((centerX - this.tileSize * 0.5) / this.tileSize)
+          const upEndX = Math.round((centerX + this.tileSize * 0.5) / this.tileSize)
+          const upY = Math.round((centerY - this.tileSize * 2) / this.tileSize)
+          
+          for (let x = upStartX; x <= upEndX; x++) {
+            tilesToCheck.push({ x, y: upY })
+          }
+          break
+
+        case 'down':
+          // Controlla una riga sotto il player
+          const downStartX = Math.round((centerX - this.tileSize * 0.5) / this.tileSize)
+          const downEndX = Math.round((centerX + this.tileSize * 0.5) / this.tileSize)
+          const downY = Math.round((centerY + this.tileSize) / this.tileSize)
+          
+          for (let x = downStartX; x <= downEndX; x++) {
+            tilesToCheck.push({ x, y: downY })
+          }
+          break
+
+        case 'left':
+          // Controlla una colonna a sinistra del player
+          const leftX = Math.round((centerX - this.tileSize * 2) / this.tileSize)
+          const leftStartY = Math.round((centerY - this.tileSize * 1.5) / this.tileSize)
+          const leftEndY = Math.round((centerY + this.tileSize * 1.5) / this.tileSize)
+          
+          for (let y = leftStartY; y <= leftEndY; y++) {
+            tilesToCheck.push({ x: leftX, y })
+          }
+          break
+
+        case 'right':
+          // Controlla una colonna a destra del player
+          const rightX = Math.round((centerX + this.tileSize) / this.tileSize)
+          const rightStartY = Math.round((centerY - this.tileSize * 1.5) / this.tileSize)
+          const rightEndY = Math.round((centerY + this.tileSize * 1.5) / this.tileSize)
+          
+          for (let y = rightStartY; y <= rightEndY; y++) {
+            tilesToCheck.push({ x: rightX, y })
+          }
+          break
+      }
+
+      // Controlla ogni tile nella direzione specificata
+      for (const tile of tilesToCheck) {
+        if (tile.y >= 0 && tile.y < this.objectTiles.length && 
+            tile.x >= 0 && tile.x < this.objectTiles[0].length) {
+          if (this.objectTiles[tile.y][tile.x] !== -1) {
+            this.removeObject(tile.x, tile.y)
+            return
+          }
+        }
       }
     },
     movePlayer() {
@@ -385,6 +458,70 @@ export default {
         }
       }
     },
+    getTileCoordinatesPlayerFeet(){
+      // Calcola il centro dei piedi del player
+      const centerX = this.player.x + this.tileSize * 2  // centro dei due tile dei piedi
+      const centerY = this.player.y + this.tileSize * 3.5  // centro verticale del tile dei piedi
+
+      // Calcola le coordinate della cella sinistra occupata dai piedi del player
+      // Occorre fare il -1 perchè i tile partono da 0
+      const playerFeetCellColumn = Math.round(centerX / this.tileSize) - 1 
+      const playerFeetCellRow = Math.round(centerY / this.tileSize) - 1
+
+      if(this.keys.e) console.log("Player position: " + centerX + ", " + centerY)
+      if(this.keys.e) console.log("Player cell: " + playerFeetCellColumn + ", " + playerFeetCellRow)
+
+      return { playerFeetCellColumn, playerFeetCellRow }
+
+    },
+    drawDetectionArea() {
+      const { playerFeetCellColumn, playerFeetCellRow } = this.getTileCoordinatesPlayerFeet()
+
+      // Imposta lo stile dell'area di detection
+      this.gameCtx.fillStyle = 'rgba(255, 255, 0, 0.3)'
+
+      switch(this.player.lastDirection) {
+        case 'up':
+          // Area sopra il player
+          this.gameCtx.fillRect(
+            playerFeetCellColumn  * this.tileSize,
+            (playerFeetCellRow - 1) * this.tileSize,
+            this.tileSize * 2,
+            this.tileSize
+          )
+          break
+
+        case 'down':
+          // Area sotto il player
+          this.gameCtx.fillRect(
+            playerFeetCellColumn * this.tileSize,
+            (playerFeetCellRow + 1) * this.tileSize,
+            this.tileSize * 2,
+            this.tileSize
+          )
+          break
+
+        case 'left':
+          // Area a sinistra del player
+          this.gameCtx.fillRect(
+            (playerFeetCellColumn - 1) * this.tileSize,
+            (playerFeetCellRow - 1) * this.tileSize,
+            this.tileSize * 1,
+            this.tileSize * 3
+          )
+          break
+
+        case 'right':
+          // Area a destra del player
+          this.gameCtx.fillRect(
+            (playerFeetCellColumn + 2) * this.tileSize,
+            (playerFeetCellRow - 1) * this.tileSize,
+            this.tileSize * 1,
+            this.tileSize * 3
+          )
+          break
+      }
+    },
     drawSprite() {
       // Pulisci il canvas del gioco
       this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
@@ -403,7 +540,7 @@ export default {
       this.gameCtx.lineWidth = 2
       this.gameCtx.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height)
 
-
+      this.drawDetectionArea()
 
       // Disegna il personaggio
       this.gameCtx.drawImage(
@@ -501,7 +638,8 @@ export default {
         w: false,
         a: false,
         s: false,
-        d: false
+        d: false,
+        e: false
       }
       
       // Ferma il movimento del player
