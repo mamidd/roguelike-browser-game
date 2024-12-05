@@ -396,7 +396,7 @@ export default {
       const { newX, newY } = this.calculateMovement(this.keys)
 
       // Applica il movimento solo se non ci sono collisioni
-      if (!this.isCollidingWithObjects(newX, newY) && !this.isCollidingWithBorderCanvas(newX, newY)) {
+      if (!this.isCollidingWithBorderCanvas(newX, newY) && !this.isCollidingWithObjects(newX, newY)) {
         this.player.x = newX
         this.player.y = newY
       } else {
@@ -522,7 +522,7 @@ export default {
       this.gameCtx.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height)
 
       // DEBUG
-      // this.drawDetectionArea()
+      this.drawDetectionArea()
 
       // Disegna il personaggio
       this.gameCtx.drawImage(
