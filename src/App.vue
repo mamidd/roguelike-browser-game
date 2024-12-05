@@ -19,7 +19,7 @@ export default {
         y: 300,
         width: 64,
         height: 64,
-        speed: 4,
+        speed: 5,
         frameX: 0,
         frameY: 14,
         moving: false,
