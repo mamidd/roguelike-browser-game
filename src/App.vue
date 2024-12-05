@@ -137,6 +137,10 @@ export default {
       return { x, y }
     },
     isCollidingWithObjects(x, y) {
+      const { tileX, tileY } = this.getCollidingObject(x, y)
+      return tileX !== -1 && tileY !== -1
+    },
+    getCollidingObject(x, y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
       const feetX = x + this.tileSize  // salta il primo tile
       const feetY = y + this.tileSize * 3  // prendi l'ultima riga
@@ -153,12 +157,12 @@ export default {
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
           if (this.objectTiles[tileY][tileX] !== -1) {
-            return true
+            return { tileX, tileY }
           }
         }
       }
 
-      return false
+      return { tileX: -1, tileY: -1 }
     },
     isCollidingWithBorderCanvas(x, y) {
       // Controlla se le colonne centrali del player sono fuori dalla mappa
@@ -178,6 +182,8 @@ export default {
       return false
     },
     removeObject(tileX, tileY) {
+      if(tileX === -1 || tileY === -1) return
+
       // Rimuovi l'oggetto dal canvas degli oggetti
       this.clearObjectTile(tileX, tileY)
 
@@ -259,7 +265,7 @@ export default {
           break
         case 'e':
           this.keys.e = true
-          this.checkObjectInDirection()
+          this.actionOnNearestCollision()
           break
       }
     },
@@ -282,156 +288,65 @@ export default {
           break
       }
     },
-    getTileCoordinatesPlayerFeet(){
-      // Calcola il centro dei piedi del player
-      const centerX = this.player.x + this.tileSize * 2  // centro dei due tile dei piedi
-      const centerY = this.player.y + this.tileSize * 3.5  // centro verticale del tile dei piedi
-
-      // Calcola le coordinate della cella sinistra occupata dai piedi del player
-      // Occorre fare il -1 perchè i tile partono da 0
-      const playerFeetCellColumn = Math.ceil(centerX / this.tileSize) - 1 
-      const playerFeetCellRow = Math.ceil(centerY / this.tileSize) - 1
-
-      // DEBUG
-      // if(this.keys.e) console.log("Player position: " + centerX + ", " + centerY)
-      // if(this.keys.e) console.log("Player cell: " + playerFeetCellColumn + ", " + playerFeetCellRow)
-
-      return { playerFeetCellColumn, playerFeetCellRow }
-
-    },
-    drawDetectionArea() {
-      const { playerFeetCellColumn, playerFeetCellRow } = this.getTileCoordinatesPlayerFeet()
-
-      // Imposta lo stile dell'area di detection
-      this.gameCtx.fillStyle = 'rgba(255, 255, 0, 0.3)'
-
-      switch(this.player.lastDirection) {
-        case 'up':
-          // Area sopra il player
-          this.gameCtx.fillRect(
-            (playerFeetCellColumn - 1) * this.tileSize,
-            (playerFeetCellRow - 1) * this.tileSize,
-            this.tileSize * 4,
-            this.tileSize
-          )
-          break
-
-        case 'down':
-          // Area sotto il player
-          this.gameCtx.fillRect(
-            (playerFeetCellColumn - 1)  * this.tileSize,
-            (playerFeetCellRow + 1) * this.tileSize,
-            this.tileSize * 4,
-            this.tileSize
-          )
-          break
-
-        case 'left':
-          // Area a sinistra del player
-          this.gameCtx.fillRect(
-            (playerFeetCellColumn - 1) * this.tileSize,
-            (playerFeetCellRow - 1) * this.tileSize,
-            this.tileSize * 1,
-            this.tileSize * 3
-          )
-          break
-
-        case 'right':
-          // Area a destra del player
-          this.gameCtx.fillRect(
-            (playerFeetCellColumn + 2) * this.tileSize,
-            (playerFeetCellRow - 1) * this.tileSize,
-            this.tileSize * 1,
-            this.tileSize * 3
-          )
-          break
-      }
-    },
-    checkObjectInDirection() {
-      const { playerFeetCellColumn, playerFeetCellRow } = this.getTileCoordinatesPlayerFeet()
-
-      // Definisci l'area di controllo in base alla direzione
-      let tilesToCheck = []
-
-      switch(this.player.lastDirection) {
-        case 'up':
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn - 1})
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn })
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn + 1 })
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn + 2 })
-          break
-
-        case 'down':
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn - 1 })
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn })
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn + 1 })
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn + 2 })
-          break
-
-        case 'left':
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn - 1 })
-          tilesToCheck.push({ y: playerFeetCellRow, x: playerFeetCellColumn - 1 })
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn - 1 })
-          break
-
-        case 'right':
-          tilesToCheck.push({ y: playerFeetCellRow - 1, x: playerFeetCellColumn + 2 })
-          tilesToCheck.push({ y: playerFeetCellRow, x: playerFeetCellColumn + 2 })
-          tilesToCheck.push({ y: playerFeetCellRow + 1, x: playerFeetCellColumn + 2 })
-          break
-      }
-
-      // Controlla ogni tile nella direzione specificata
-      for (const tile of tilesToCheck) {
-        if (tile.y >= 0 && tile.y < this.objectTiles.length && 
-            tile.x >= 0 && tile.x < this.objectTiles[0].length) {
-          if (this.objectTiles[tile.y][tile.x] !== -1) {
-            this.removeObject(tile.x, tile.y)
-            return
-          }
-        }
-      }
+    actionOnNearestCollision() {
+      const { newX, newY } = this.getNewPosition()
+      const { tileX, tileY } = this.getCollidingObject(newX, newY)
+      this.removeObject(tileX, tileY)
     },
     movePlayer() {
-      const { newX, newY } = this.calculateMovement(this.keys)
+      this.player.moving = this.isMoving(this.keys)
+      this.setLastDirection(this.keys)
+      const { newX, newY } = this.getNewPosition()
 
-      // Applica il movimento solo se non ci sono collisioni
-      if (!this.isCollidingWithBorderCanvas(newX, newY) && !this.isCollidingWithObjects(newX, newY)) {
-        this.player.x = newX
-        this.player.y = newY
-      } else {
-        // Se c'è una collisione, il player si ferma
-        this.player.moving = false
+      if(this.player.moving) {
+        // Applica il movimento solo se non ci sono collisioni
+        if (!this.isCollidingWithBorderCanvas(newX, newY) && !this.isCollidingWithObjects(newX, newY)) {
+          this.setNewPosition(newX, newY)
+        } else {
+          // Se c'è una collisione, il player si ferma
+          this.player.moving = false
+        }
       }
 
       // Aggiorna l'animazione del personaggio
       this.setAnimationType(this.player.lastDirection, this.player.moving)
     },
-    calculateMovement(keys) {
+    isMoving(keys) {
+      return keys.w || keys.s || keys.a || keys.d
+    },
+    setLastDirection(keys) {
+      if (keys.w) {
+        this.player.lastDirection = 'up'
+      } else if (keys.s) {
+        this.player.lastDirection = 'down'
+      } else if (keys.a) {
+        this.player.lastDirection = 'left'
+      } else if (keys.d) {
+        this.player.lastDirection = 'right'
+      }
+    },
+    setNewPosition(newX, newY) {
+      this.player.x = newX
+      this.player.y = newY
+    },
+    getNewPosition() {
       let newX = this.player.x
       let newY = this.player.y
-      this.player.moving = false
 
-      if (keys.w || keys.s || keys.a || keys.d) {
-        this.player.moving = true
-        if (keys.w) {
+      switch(this.player.lastDirection) {
+        case 'up':
           newY -= this.player.speed
-          this.player.lastDirection = 'up'
-        }
-        if (keys.s) {
-          newY += this.player.speed
-          this.player.lastDirection = 'down'
-        }
-        if (keys.a) {
+          break
+        case 'left':
           newX -= this.player.speed
-          this.player.lastDirection = 'left'
-        }
-        if (keys.d) {
+          break
+        case 'down':
+          newY += this.player.speed
+          break
+        case 'right':
           newX += this.player.speed
-          this.player.lastDirection = 'right'
-        }
+          break
       }
-
       return { newX, newY }
     },
     setAnimationType(lastDirection, isMoving) {
@@ -520,9 +435,6 @@ export default {
       this.gameCtx.strokeStyle = 'black'
       this.gameCtx.lineWidth = 2
       this.gameCtx.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height)
-
-      // DEBUG
-      this.drawDetectionArea()
 
       // Disegna il personaggio
       this.gameCtx.drawImage(
