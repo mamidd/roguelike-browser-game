@@ -140,7 +140,7 @@ export default {
       const { tileX, tileY } = this.getCollidingObject(x, y)
       return tileX !== -1 && tileY !== -1
     },
-    getCollidingObject(x, y) {
+    getCollidingArea(x , y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
       const feetX = x + this.tileSize  // salta il primo tile
       const feetY = y + this.tileSize * 3  // prendi l'ultima riga
@@ -152,6 +152,14 @@ export default {
       const startTileY = Math.floor(feetY / this.tileSize)
       const endTileX = Math.floor((feetX + feetWidth) / this.tileSize)
       const endTileY = Math.floor((feetY + feetHeight) / this.tileSize)
+
+      // Log per DEBUG
+      // console.log('NewX ' + x, 'NewY ' + y, 'FeetX ' + feetX, 'FeetY ' + feetY, 'startTileX ' + startTileX, 'startTileY ' + startTileY, 'endTileX ' + endTileX, 'endTileY ' + endTileY)
+
+      return {startTileX, startTileY, endTileX, endTileY}
+    },
+    getCollidingObject(x, y) {
+      const { startTileX, startTileY, endTileX, endTileY } = this.getCollidingArea(x, y)
 
       // Controlla tutte le tile che intersecano i piedi del player
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
@@ -418,6 +426,22 @@ export default {
         }
       }
     },
+    drawCollidingArea() {
+      // Prende le nuove coordinate in base all'ultima direzione di movimento
+      const { newX: x, newY: y } = this.getNewPosition()
+
+      // Calcola le celle della mappa per l'area di collisione
+      const { startTileX, startTileY, endTileX, endTileY } = this.getCollidingArea(x, y)
+
+      // Disegna l'area di collisione
+      this.gameCtx.fillStyle = 'rgba(255, 255, 0, 0.3)'
+      this.gameCtx.fillRect(
+        startTileX * this.tileSize, 
+        startTileY * this.tileSize, 
+        (endTileX - startTileX + 1) * this.tileSize, 
+        (endTileY - startTileY + 1) * this.tileSize
+      )
+    },
     drawSprite() {
       // Pulisci il canvas del gioco
       this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
@@ -431,6 +455,10 @@ export default {
         this.tileSize * 2,  // larghezza di 2 tile (32px)
         this.tileSize  // altezza di 1 tile (16px)
       )
+
+      // Disegna l'area in cui calcola le collisioni (per DEBUG)
+      this.drawCollidingArea()
+
       // Disegna il bordo della hitbox del personaggio
       this.gameCtx.strokeStyle = 'black'
       this.gameCtx.lineWidth = 2
