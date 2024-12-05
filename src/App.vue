@@ -135,26 +135,12 @@ export default {
       const y = Math.floor(tileIndex / tilesPerRow) * tileWithBorder
       return { x, y }
     },
-    isColliding(x, y, width, height) {
+    isCollidingWithObjects(x, y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
       const feetX = x + this.tileSize  // salta il primo tile
       const feetY = y + this.tileSize * 3  // prendi l'ultima riga
       const feetWidth = this.tileSize * 2  // larghezza di 2 tile
       const feetHeight = this.tileSize  // altezza di 1 tile
-
-      // Controlla se le colonne centrali del player sono fuori dalla mappa
-      const playerCenterX = x + this.tileSize  // inizio delle colonne centrali
-      const playerFullHeight = height  // altezza totale del player
-      const centerTileStartX = Math.floor(playerCenterX / this.tileSize)
-      const centerTileEndX = Math.floor((playerCenterX + this.tileSize * 2) / this.tileSize)
-      const tileStartY = Math.floor(y / this.tileSize)
-      const tileEndY = Math.floor((y + playerFullHeight) / this.tileSize)
-
-      // Controlla se le colonne centrali sono fuori dalla mappa
-      if (tileStartY < 0 || tileEndY >= this.objectTiles.length || 
-          centerTileStartX < 0 || centerTileEndX >= this.objectTiles[0].length) {
-        return true
-      }
 
       // Converti le coordinate dei piedi in coordinate della griglia per il controllo delle collisioni con oggetti
       const startTileX = Math.floor(feetX / this.tileSize)
@@ -166,10 +152,26 @@ export default {
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
           if (this.objectTiles[tileY][tileX] !== -1) {
-            this.removeObject(tileX, tileY)
             return true
           }
         }
+      }
+
+      return false
+    },
+    isCollidingWithBorderCanvas(x, y) {
+      // Controlla se le colonne centrali del player sono fuori dalla mappa
+      const playerCenterX = x + this.tileSize  // inizio delle colonne centrali
+      const playerFullHeight = 4 * this.tileSize  // altezza totale del player
+      const centerTileStartX = Math.floor(playerCenterX / this.tileSize)
+      const centerTileEndX = Math.floor((playerCenterX + this.tileSize * 2) / this.tileSize)
+      const tileStartY = Math.floor(y / this.tileSize)
+      const tileEndY = Math.floor((y + playerFullHeight) / this.tileSize)
+
+      // Controlla se le colonne centrali sono fuori dalla mappa
+      if (tileStartY < 0 || tileEndY >= this.objectTiles.length || 
+          centerTileStartX < 0 || centerTileEndX >= this.objectTiles[0].length) {
+        return true
       }
 
       return false
@@ -276,7 +278,7 @@ export default {
       const { newX, newY } = this.calculateMovement(this.keys)
 
       // Applica il movimento solo se non ci sono collisioni
-      if (!this.isColliding(newX, newY, this.player.width, this.player.height)) {
+      if (!this.isCollidingWithObjects(newX, newY) && !this.isCollidingWithBorderCanvas(newX, newY)) {
         this.player.x = newX
         this.player.y = newY
       } else {
