@@ -166,24 +166,30 @@ export default {
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
           if (this.objectTiles[tileY][tileX] !== -1) {
-            // Rimuovi l'oggetto quando c'è una collisione
-            this.objectTiles[tileY][tileX] = -1
-            // Pulisci il tile dal canvas degli oggetti
-            this.clearObjectTile(tileX, tileY)
-            // Decrementa il contatore degli oggetti
-            this.totalObjects--
-            // Controlla se tutti gli oggetti sono stati rimossi
-            if (this.totalObjects === 0) {
-              requestAnimationFrame(() => {
-                this.handleGameOver()
-              })
-            }
+            this.removeObject(tileX, tileY)
             return true
           }
         }
       }
 
       return false
+    },
+    removeObject(tileX, tileY) {
+      // Rimuovi l'oggetto dal canvas degli oggetti
+      this.clearObjectTile(tileX, tileY)
+
+      // Rimuovi l'oggetto quando c'è una collisione
+      this.objectTiles[tileY][tileX] = -1
+
+      // Decrementa il contatore degli oggetti
+      this.totalObjects--
+
+      // Controlla se tutti gli oggetti sono stati rimossi
+      if (this.totalObjects === 0) {
+        requestAnimationFrame(() => {
+          this.handleGameOver()
+        })
+      }
     },
     clearObjectTile(tileX, tileY) {
       // Pulisci il tile specifico nel canvas degli oggetti
