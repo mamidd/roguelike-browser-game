@@ -1,5 +1,14 @@
 <template>
   <div class="game-container">
+    <div v-if="showStartingScreen" class="startingscreen-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+      <div class="startingscreen-message">
+        <span>Benvenuto nel gioco Roguelike</span><br><br>
+        <span>Prendi tutti i materiali per completare il gioco</span><br><br><br>
+        <span>Per muoverti premi W A S D</span><br>
+        <span>Per raccogliere gli oggetti premi E</span><br>
+        <span>Per aprire o chiudere l'inventario premi I</span><br>
+      </div>
+    </div>
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
@@ -32,6 +41,7 @@ export default {
   data() {
     return {
       showInventory: true,
+      showStartingScreen: true,
       player: {
         x: 400,
         y: 300,
@@ -669,6 +679,25 @@ canvas {
   z-index: 3;
 }
 
+.startingscreen-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 99;
+}
+
+.startingscreen-message {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: left;
+}
+
 .completion-overlay {
   position: absolute;
   top: 50%;
@@ -678,7 +707,7 @@ canvas {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 4;
+  z-index: 99;
 }
 
 .completion-message {
