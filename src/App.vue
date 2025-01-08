@@ -6,7 +6,7 @@
     <div v-if="showGameOver" class="completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
       <div class="completion-message">Complimenti! Hai raccolto tutti i materiali</div>
     </div>
-    <div class="inventory-panel" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
+    <div class="inventory-panel" v-show="showInventory" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
       <div class="inventory-row">
         <div class="inventory-text"><strong>INVENTARIO ( premi i )</strong></div>
       </div>
@@ -31,6 +31,7 @@ export default {
   name: 'App',
   data() {
     return {
+      showInventory: true,
       player: {
         x: 400,
         y: 300,
@@ -71,7 +72,8 @@ export default {
         a: false,
         s: false,
         d: false,
-        e: false
+        e: false,
+        i: false
       },
       animationFrames: {
         walk: 9,
@@ -336,6 +338,10 @@ export default {
           this.keys.e = true
           this.actionOnNearestCollision()
           break
+        case 'i':
+          this.keys.i = true
+          this.showInventory = !this.showInventory
+          break
       }
     },
     keyUp(e) {
@@ -354,6 +360,9 @@ export default {
           break
         case 'e':
           this.keys.e = false
+          break
+        case 'i':
+          this.keys.i = false
           break
       }
     },
@@ -622,7 +631,8 @@ export default {
         a: false,
         s: false,
         d: false,
-        e: false
+        e: false,
+        i: false
       }
       
       // Ferma il movimento del player
