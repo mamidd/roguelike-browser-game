@@ -1,19 +1,21 @@
 <template>
   <div class="game-container">
-    <div v-if="showStartingScreen" class="startingscreen-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
-      <div class="startingscreen-message">
+    <div v-if="showStartingScreen" class="overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+      <div class="overlay-message align-left">
         <span>Benvenuto nel gioco Roguelike</span><br><br>
         <span>Prendi tutti i materiali per completare il gioco</span><br><br><br>
         <span>Per muoverti premi W A S D</span><br>
         <span>Per raccogliere gli oggetti premi E</span><br>
         <span>Per aprire o chiudere l'inventario premi I</span><br>
       </div>
+      <button class="start-button" @click="startGame">Inizia</button>
     </div>
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <div v-if="showGameOver" class="completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
-      <div class="completion-message">Complimenti! Hai raccolto tutti i materiali</div>
+    <div v-if="showGameOver" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+      <div class="overlay-message align-center">Complimenti! Hai raccolto tutti i materiali</div>
+      <button class="start-button" @click="startGame">Ricomincia</button>
     </div>
     <div class="inventory-panel" v-show="showInventory" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
       <div class="inventory-row">
@@ -107,20 +109,21 @@ export default {
     },
   },
   async mounted() {
+    // Initialize canvas and load assets
     this.initializeCanvas()
-
     await this.loadAssets()
 
-    // Imposta le dimensioni iniziali del canvas
-    this.updateCanvasSize()
+    // Set initial canvas size
+    this.setCanvasSize()
     
+    // Add event listeners
     this.addEventListner()
-
-    // Avvia il game loop
-    this.animate(0)
   },
   beforeUnmount() {
     this.handleGameOver()
+
+    // Rimuovi i listener degli eventi
+    this.removeEventListner()
   },
   methods: {
     async loadAssets() {
@@ -626,15 +629,12 @@ export default {
       // Mostra l'overlay di completamento
       this.showGameOver = true
       
-      // Rimuovi i listener degli eventi
-      this.removeEventListner()
-      
       // Stoppa l'animazione
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame)
         this.animationFrame = null
       }
-      
+    
       // Resetta i tasti premuti
       this.keys = {
         w: false,
@@ -648,6 +648,21 @@ export default {
       // Ferma il movimento del player
       this.player.moving = false
     },
+    resetInventory() {
+      // Resetta l'inventario
+      this.objectsGathered = {
+        yellowTrees: 0,
+        greenTrees: 0,
+        mushrooms: 0
+      }
+    },
+    startGame() {
+      this.showStartingScreen = false
+      this.showGameOver = false
+      this.resetInventory()
+      this.updateCanvasSize()
+      this.animate(0)
+    }
   }
 }
 </script>
@@ -679,43 +694,55 @@ canvas {
   z-index: 3;
 }
 
-.startingscreen-overlay {
+.overlay {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: rgba(0, 0, 0);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   z-index: 99;
-}
-
-.startingscreen-message {
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-  text-align: left;
 }
 
 .completion-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 99;
 }
 
-.completion-message {
+.overlay-message {
   color: white;
   font-size: 24px;
   font-weight: bold;
+}
+
+.align-center {
   text-align: center;
 }
+
+.align-left {
+  text-align: left;
+}
+
+.start-button {
+  margin-top: 30px;
+  padding: 15px 40px;
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+  background-color: #4CAF50;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.start-button:hover {
+  background-color: #45a049;
+}
+
+
 
 .inventory-panel {
   position: absolute;
