@@ -293,9 +293,7 @@ export default {
 
       // Controlla se tutti gli oggetti sono stati rimossi
       if (this.totalObjects === 0) {
-        requestAnimationFrame(() => {
-          this.throwGameComplete()
-        })
+        this.throwGameComplete()
       }
     },
     clearObjectTile(tileX, tileY) {
@@ -427,7 +425,6 @@ export default {
           // Se la collisione è con una trappola, gestisci il game over
           if (objectType === 'trap') {
             this.throwGameFailed()
-            return
           }
         }
       }
@@ -664,11 +661,15 @@ export default {
     },
     throwGameFailed() {
       this.showGameFailed = true
-      this.handleGameOver()
+      requestAnimationFrame(() => {
+        this.handleGameOver()
+      })
     },
     throwGameComplete() {
       this.showGameComplete = true
-      this.handleGameOver()
+      requestAnimationFrame(() => {
+        this.handleGameOver()
+      })
     },  
     handleGameOver() {     
       // Rimuovi i listener degli eventi
