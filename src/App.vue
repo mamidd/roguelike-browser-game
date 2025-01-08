@@ -13,8 +13,12 @@
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <div v-if="showGameOver" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+    <div v-if="showGameComplete" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
       <div class="overlay-message align-center">Complimenti! Hai raccolto tutti i materiali</div>
+      <button class="start-button" @click="startGame">Ricomincia</button>
+    </div>
+    <div v-if="showGameFailed" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
+      <div class="overlay-message align-center">Ops sei esploso su una bomba :(</div>
       <button class="start-button" @click="startGame">Ricomincia</button>
     </div>
     <div class="inventory-panel" v-show="showInventory" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
@@ -42,8 +46,6 @@ export default {
   name: 'App',
   data() {
     return {
-      showInventory: true,
-      showStartingScreen: true,
       player: {
         x: 400,
         y: 300,
@@ -101,7 +103,10 @@ export default {
       gameCtx: null,
       backgroundCtx: null,
       objectsCtx: null,
-      showGameOver: false,
+      showGameFailed: false,
+      showGameComplete: false,
+      showInventory: true,
+      showStartingScreen: true,
     }
   },
   computed: {
@@ -116,15 +121,9 @@ export default {
 
     // Set initial canvas size
     this.setCanvasSize()
-    
-    // Add event listeners
-    this.addEventListner()
   },
   beforeUnmount() {
     this.handleGameOver()
-
-    // Rimuovi i listener degli eventi
-    this.removeEventListner()
   },
   methods: {
     async loadAssets() {
@@ -201,6 +200,15 @@ export default {
       const { tileX, tileY } = this.getCollidingObject(x, y)
       return tileX !== -1 && tileY !== -1
     },
+    getObjectType(tileX, tileY) {
+      if(tileX === -1 && tileY === -1) return 'none'
+
+      if(this.availableTiles.objects.includes(this.objectTiles[tileY][tileX])) return 'object'
+
+      if(this.availableTiles.traps.includes(this.objectTiles[tileY][tileX])) return 'trap'
+
+      return 'none'
+    },
     getObjectsCollidingArea(x , y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
       const feetX = x + this.tileSize  // salta il primo tile
@@ -225,9 +233,12 @@ export default {
       // Controlla tutte le tile che intersecano i piedi del player
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
+
+          if(tileX > this.objectTiles[0].length - 1 || tileY > this.objectTiles.length - 1) continue
+
           const tileValue = this.objectTiles[tileY][tileX]
-          // Verifica che il tile non sia vuoto (-1) e sia un oggetto collezionabile
-          if (tileValue !== -1 && this.availableTiles.objects.includes(tileValue)) {
+          // Verifica che il tile non sia vuoto (-1)
+          if (tileValue !== -1) {
             return { tileX, tileY }
           }
         }
@@ -253,13 +264,13 @@ export default {
       return false
     },
     removeObject(tileX, tileY) {
-      if(tileX === -1 || tileY === -1) return
+      if ( this.getObjectType(tileX, tileY) === 'trap' || this.getObjectType(tileX, tileY) === 'none' ) return 
 
       // Ottieni il tipo di oggetto prima di rimuoverlo
-      const objectType = this.objectTiles[tileY][tileX]
+      const object = this.objectTiles[tileY][tileX]
 
       // Incrementa il contatore appropriato in base al tipo di oggetto
-      switch(objectType) {
+      switch(object) {
         case this.availableTiles.objects[0]: // 27 - Albero giallo
           this.objectsGathered.yellowTrees++
           break
@@ -283,7 +294,7 @@ export default {
       // Controlla se tutti gli oggetti sono stati rimossi
       if (this.totalObjects === 0) {
         requestAnimationFrame(() => {
-          this.handleGameOver()
+          this.throwGameComplete()
         })
       }
     },
@@ -399,12 +410,25 @@ export default {
       const { newX, newY } = this.getNewPosition()
 
       if(this.player.moving) {
-        // Applica il movimento solo se non ci sono collisioni
-        if (!this.isCollidingWithBorderCanvas(newX, newY) && !this.isCollidingWithObjects(newX, newY)) {
+        // Controlla le collisioni con oggetti
+        const { tileX, tileY } = this.getCollidingObject(newX, newY)
+        const objectType = this.getObjectType(tileX, tileY)
+        
+        // Controlla le collisioni con i bordi
+        const hasBorderCollision = this.isCollidingWithBorderCanvas(newX, newY)
+        
+        // Se non ci sono collisioni, muovi il player
+        if (!hasBorderCollision && objectType === 'none') {
           this.setNewPosition(newX, newY)
         } else {
           // Se c'è una collisione, il player si ferma
           this.player.moving = false
+          
+          // Se la collisione è con una trappola, gestisci il game over
+          if (objectType === 'trap') {
+            this.throwGameFailed()
+            return
+          }
         }
       }
 
@@ -638,10 +662,18 @@ export default {
       this.player.x = (this.canvasSize.width - this.player.width) / 2
       this.player.y = (this.canvasSize.height - this.player.height) / 2
     },
-    handleGameOver() {
-      // Mostra l'overlay di completamento
-      this.showGameOver = true
-      
+    throwGameFailed() {
+      this.showGameFailed = true
+      this.handleGameOver()
+    },
+    throwGameComplete() {
+      this.showGameComplete = true
+      this.handleGameOver()
+    },  
+    handleGameOver() {     
+      // Rimuovi i listener degli eventi
+      this.removeEventListner()
+
       // Stoppa l'animazione
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame)
@@ -658,8 +690,9 @@ export default {
         i: false
       }
       
-      // Ferma il movimento del player
+      // Resetta il movimento del player
       this.player.moving = false
+      this.player.lastDirection = 'down'
     },
     resetInventory() {
       // Resetta l'inventario
@@ -671,7 +704,10 @@ export default {
     },
     startGame() {
       this.showStartingScreen = false
-      this.showGameOver = false
+      this.showGameFailed = false
+      this.showGameComplete = false
+      
+      this.addEventListner()
       this.resetInventory()
       this.updateCanvasSize()
       this.animate(0)
