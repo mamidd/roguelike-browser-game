@@ -77,7 +77,8 @@ export default {
       availableTiles: {
         ground: [0, 1, 2],
         decoration: [39,40,41,42,43],
-        objects: [27,28,29]
+        objects: [27,28,29],
+        traps: [105]
       },
       keys: {
         w: false,
@@ -200,7 +201,7 @@ export default {
       const { tileX, tileY } = this.getCollidingObject(x, y)
       return tileX !== -1 && tileY !== -1
     },
-    getCollidingArea(x , y) {
+    getObjectsCollidingArea(x , y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
       const feetX = x + this.tileSize  // salta il primo tile
       const feetY = y + this.tileSize * 3  // prendi l'ultima riga
@@ -219,12 +220,14 @@ export default {
       return {startTileX, startTileY, endTileX, endTileY}
     },
     getCollidingObject(x, y) {
-      const { startTileX, startTileY, endTileX, endTileY } = this.getCollidingArea(x, y)
+      const { startTileX, startTileY, endTileX, endTileY } = this.getObjectsCollidingArea(x, y)
 
       // Controlla tutte le tile che intersecano i piedi del player
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
-          if (this.objectTiles[tileY][tileX] !== -1) {
+          const tileValue = this.objectTiles[tileY][tileX]
+          // Verifica che il tile non sia vuoto (-1) e sia un oggetto collezionabile
+          if (tileValue !== -1 && this.availableTiles.objects.includes(tileValue)) {
             return { tileX, tileY }
           }
         }
@@ -311,13 +314,19 @@ export default {
           // Determina il tipo di tile da generare
           const rand = Math.random()
           let tileArray
-          if (rand < 0.01 && y > 3) { // 1% probabilità di oggetti fisici
+          
+          if (rand < 0.003 && y > 3) { // 0.3% probabilità di trappole dopo la terza riga
+            tileArray = this.availableTiles.traps
+            const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
+            objectRow.push(tileIndex)
+            row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
+          } else if (rand < 0.013 && y > 3) { // 1% probabilità di oggetti fisici dopo la terza riga
             tileArray = this.availableTiles.objects
             const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
             objectRow.push(tileIndex)
             this.totalObjects++
             row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
-          } else if (rand < 0.11) { // 10% probabilità di decorazioni
+          } else if (rand < 0.113) { // 10% probabilità di decorazioni
             tileArray = this.availableTiles.decoration
             const randomIndex = Math.floor(Math.random() * tileArray.length)
             row.push(tileArray[randomIndex])
@@ -509,12 +518,12 @@ export default {
         }
       }
     },
-    drawCollidingArea() {
+    drawObjectsCollidingArea() {
       // Prende le nuove coordinate in base all'ultima direzione di movimento
       const { newX: x, newY: y } = this.getNewPosition()
 
       // Calcola le celle della mappa per l'area di collisione
-      const { startTileX, startTileY, endTileX, endTileY } = this.getCollidingArea(x, y)
+      const { startTileX, startTileY, endTileX, endTileY } = this.getObjectsCollidingArea(x, y)
 
       // Disegna l'area di collisione
       this.gameCtx.fillStyle = 'rgba(255, 255, 0, 0.3)'
@@ -540,7 +549,7 @@ export default {
       )
 
       // Disegna l'area in cui calcola le collisioni (per DEBUG)
-      this.drawCollidingArea()
+      this.drawObjectsCollidingArea()
 
       // Disegna il bordo della hitbox del personaggio
       this.gameCtx.strokeStyle = 'black'
