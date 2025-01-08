@@ -6,18 +6,21 @@
     <div v-if="showGameOver" class="completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
       <div class="completion-message">Complimenti! Hai raccolto tutti i materiali</div>
     </div>
-    <div class="info-panel" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
-      <div class="info-row">
-        <canvas ref="icon1" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
-        <div class="info-text">Alberi gialli: {{ objectsGathered.yellowTrees }}</div>
+    <div class="inventory-panel" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
+      <div class="inventory-row">
+        <div class="inventory-text"><strong>INVENTARIO ( premi i )</strong></div>
       </div>
-      <div class="info-row">
-        <canvas ref="icon2" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
-        <div class="info-text">Alberi verdi: {{ objectsGathered.greenTrees }}</div>
+      <div class="inventory-row">
+        <canvas ref="icon1" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
+        <div class="inventory-text">Alberi gialli: {{ objectsGathered.yellowTrees }}</div>
       </div>
-      <div class="info-row">
-        <canvas ref="icon3" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
-        <div class="info-text">Funghi: {{ objectsGathered.mushrooms }}</div>
+      <div class="inventory-row">
+        <canvas ref="icon2" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
+        <div class="inventory-text">Alberi verdi: {{ objectsGathered.greenTrees }}</div>
+      </div>
+      <div class="inventory-row">
+        <canvas ref="icon3" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
+        <div class="inventory-text">Funghi: {{ objectsGathered.mushrooms }}</div>
       </div>
     </div>
   </div>
@@ -233,6 +236,22 @@ export default {
     },
     removeObject(tileX, tileY) {
       if(tileX === -1 || tileY === -1) return
+
+      // Ottieni il tipo di oggetto prima di rimuoverlo
+      const objectType = this.objectTiles[tileY][tileX]
+
+      // Incrementa il contatore appropriato in base al tipo di oggetto
+      switch(objectType) {
+        case this.availableTiles.objects[0]: // 27 - Albero giallo
+          this.objectsGathered.yellowTrees++
+          break
+        case this.availableTiles.objects[1]: // 28 - Albero verde
+          this.objectsGathered.greenTrees++
+          break
+        case this.availableTiles.objects[2]: // 29 - Fungo
+          this.objectsGathered.mushrooms++
+          break
+      }
 
       // Rimuovi l'oggetto dal canvas degli oggetti
       this.clearObjectTile(tileX, tileY)
@@ -659,11 +678,11 @@ canvas {
   text-align: center;
 }
 
-.info-panel {
+.inventory-panel {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 200px;
+  width: 250px;
   background-color: rgba(0, 0, 0, 0.7);
   padding: 20px;
   color: white;
@@ -672,13 +691,13 @@ canvas {
   z-index: 4;
 }
 
-.info-row {
+.inventory-row {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.info-icon {
+.inventory-icon {
   margin-right: 10px;
   image-rendering: pixelated;
 }
