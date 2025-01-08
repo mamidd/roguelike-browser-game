@@ -534,10 +534,7 @@ export default {
         (endTileY - startTileY + 1) * this.tileSize
       )
     },
-    drawSprite() {
-      // Pulisci il canvas del gioco
-      this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
-
+    drawFeetArea() {
       // Disegna il bordo della hitbox dei piedi
       this.gameCtx.strokeStyle = 'red'
       this.gameCtx.lineWidth = 1
@@ -547,6 +544,13 @@ export default {
         this.tileSize * 2,  // larghezza di 2 tile (32px)
         this.tileSize  // altezza di 1 tile (16px)
       )
+    },
+    drawSprite() {
+      // Pulisci il canvas del gioco
+      this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
+
+      // Disegna l'area dei piedi
+      this.drawFeetArea()
 
       // Disegna l'area in cui calcola le collisioni (per DEBUG)
       this.drawObjectsCollidingArea()
