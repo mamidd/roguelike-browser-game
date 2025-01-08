@@ -6,6 +6,20 @@
     <div v-if="showGameOver" class="completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
       <div class="completion-message">Complimenti! Hai raccolto tutti i materiali</div>
     </div>
+    <div class="info-panel" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
+      <div class="info-row">
+        <canvas ref="icon1" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
+        <div class="info-text">Alberi gialli: {{ objectsGathered.yellowTrees }}</div>
+      </div>
+      <div class="info-row">
+        <canvas ref="icon2" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
+        <div class="info-text">Alberi verdi: {{ objectsGathered.greenTrees }}</div>
+      </div>
+      <div class="info-row">
+        <canvas ref="icon3" :width="tileSize" :height="tileSize" class="info-icon reset-positioning"></canvas>
+        <div class="info-text">Funghi: {{ objectsGathered.mushrooms }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -39,6 +53,11 @@ export default {
       tiles: [],
       objectTiles: [],
       totalObjects: 0,
+      objectsGathered: {
+        yellowTrees: 0,
+        greenTrees: 0,
+        mushrooms: 0
+      },
       availableTiles: {
         ground: [0, 1, 2],
         decoration: [39,40,41,42,43],
@@ -93,6 +112,7 @@ export default {
       // Carica gli assets
       await this.loadTiles()
       await this.loadCharacterSprite()
+      this.drawInfoIcons()
     },
     async loadTiles() {
       // Carica la tilemap
@@ -105,6 +125,28 @@ export default {
       this.sprite = new Image()
       this.sprite.src = new URL(`./assets/sprite.png`, import.meta.url).href
       await this.sprite.decode()
+    },
+    drawInfoIcons() {
+      for (let i = 1; i <= 3; i++) {
+        const canvas = this.$refs['icon' + i]
+        if (canvas) {
+          const ctx = canvas.getContext('2d')
+          const tileIndex = this.availableTiles.objects[i - 1]
+          const { x: sourceX, y: sourceY } = this.getTileCoordinates(tileIndex)
+          
+          ctx.drawImage(
+            this.tilemapImage,
+            sourceX,
+            sourceY,
+            this.tileSize,
+            this.tileSize,
+            0,
+            0,
+            16,
+            16
+          )
+        }
+      }
     },
     initializeCanvas() {
       // Inizializza i contesti dei canvas
@@ -617,11 +659,42 @@ canvas {
   text-align: center;
 }
 
+.info-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  color: white;
+  font-size: 16px;
+  margin-left: auto;
+  z-index: 4;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.info-icon {
+  margin-right: 10px;
+  image-rendering: pixelated;
+}
+
 /* Reset CSS per rimuovere margini e padding di default */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+.reset-positioning {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
 }
 
 body {
