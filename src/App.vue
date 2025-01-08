@@ -121,9 +121,15 @@ export default {
 
     // Set initial canvas size
     this.setCanvasSize()
+
+    // Add event listeners
+    this.addEventListner()
   },
   beforeUnmount() {
     this.handleGameOver()
+
+    // Remove event listeners
+    this.removeEventListner()
   },
   methods: {
     async loadAssets() {
@@ -672,9 +678,6 @@ export default {
       })
     },  
     handleGameOver() {     
-      // Rimuovi i listener degli eventi
-      this.removeEventListner()
-
       // Stoppa l'animazione
       if (this.animationFrame) {
         cancelAnimationFrame(this.animationFrame)
@@ -708,7 +711,6 @@ export default {
       this.showGameFailed = false
       this.showGameComplete = false
       
-      this.addEventListner()
       this.resetInventory()
       this.updateCanvasSize()
       this.animate(0)
