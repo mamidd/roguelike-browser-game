@@ -1,26 +1,14 @@
 <template>
   <div class="game-container">
-    <div v-if="showStartingScreen" class="overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
-      <div class="overlay-message align-left">
-        <span>Benvenuto nel gioco Roguelike</span><br><br>
-        <span>Prendi tutti i materiali per completare il gioco</span><br><br><br>
-        <span>Per muoverti premi W A S D</span><br>
-        <span>Per raccogliere gli oggetti premi E</span><br>
-        <span>Per aprire o chiudere l'inventario premi I</span><br>
-      </div>
-      <button class="start-button" @click="startGame">Inizia</button>
-    </div>
+    <overlay-screen 
+      :canvas-width="canvasSize.width"
+      :canvas-height="canvasSize.height"
+      :game-status="gameStatus"
+      @start-game="startGame">
+    </overlay-screen>
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <div v-if="showGameComplete" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
-      <div class="overlay-message align-center">Complimenti! Hai raccolto tutti i materiali</div>
-      <button class="start-button" @click="startGame">Ricomincia</button>
-    </div>
-    <div v-if="showGameFailed" class="overlay completion-overlay" :style="{ width: canvasSize.width + 'px', height: canvasSize.height + 'px' }">
-      <div class="overlay-message align-center">Ops sei esploso su una bomba :(</div>
-      <button class="start-button" @click="startGame">Ricomincia</button>
-    </div>
     <div class="inventory-panel" v-show="showInventory" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
       <div class="inventory-row">
         <div class="inventory-text"><strong>INVENTARIO ( premi i )</strong></div>
@@ -42,8 +30,15 @@
 </template>
 
 <script>
+import OverlayScreen from './components/OverlayScreen.vue'
+import { GameStatuses } from './utils/constants'
+
 export default {
   name: 'App',
+  components: {
+    OverlayScreen
+  },
+  emit: ['start-game'],
   data() {
     return {
       player: {
@@ -103,10 +98,8 @@ export default {
       gameCtx: null,
       backgroundCtx: null,
       objectsCtx: null,
-      showGameFailed: false,
-      showGameComplete: false,
       showInventory: true,
-      showStartingScreen: true,
+      gameStatus: GameStatuses.TOBESTARTED
     }
   },
   computed: {
@@ -666,13 +659,13 @@ export default {
       this.player.y = (this.canvasSize.height - this.player.height) / 2
     },
     throwGameFailed() {
-      this.showGameFailed = true
+      this.gameStatus = GameStatuses.FAILED
       requestAnimationFrame(() => {
         this.handleGameOver()
       })
     },
     throwGameComplete() {
-      this.showGameComplete = true
+      this.gameStatus = GameStatuses.COMPLETED
       requestAnimationFrame(() => {
         this.handleGameOver()
       })
@@ -706,11 +699,8 @@ export default {
         mushrooms: 0
       }
     },
-    startGame() {
-      this.showStartingScreen = false
-      this.showGameFailed = false
-      this.showGameComplete = false
-      
+    startGame() {      
+      this.gameStatus = GameStatuses.PLAYING
       this.resetInventory()
       this.updateCanvasSize()
       this.animate(0)
@@ -746,29 +736,6 @@ canvas {
   z-index: 3;
 }
 
-.overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(0, 0, 0);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 99;
-}
-
-.completion-overlay {
-  background-color: rgba(0, 0, 0, 0.7);
-}
-
-.overlay-message {
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-}
-
 .align-center {
   text-align: center;
 }
@@ -776,25 +743,6 @@ canvas {
 .align-left {
   text-align: left;
 }
-
-.start-button {
-  margin-top: 30px;
-  padding: 15px 40px;
-  font-size: 20px;
-  font-weight: bold;
-  color: white;
-  background-color: #4CAF50;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.start-button:hover {
-  background-color: #45a049;
-}
-
-
 
 .inventory-panel {
   position: absolute;
