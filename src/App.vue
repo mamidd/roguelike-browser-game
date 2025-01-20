@@ -9,34 +9,24 @@
     <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
     <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <div class="inventory-panel" v-show="showInventory" :style="{ transform: 'translate(-' + canvasSize.width/2 + 'px, -' + canvasSize.height/2 + 'px)' }">
-      <div class="inventory-row">
-        <div class="inventory-text"><strong>INVENTARIO ( premi i )</strong></div>
-      </div>
-      <div class="inventory-row">
-        <canvas ref="icon1" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
-        <div class="inventory-text">Alberi gialli: {{ objectsGathered.yellowTrees }}</div>
-      </div>
-      <div class="inventory-row">
-        <canvas ref="icon2" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
-        <div class="inventory-text">Alberi verdi: {{ objectsGathered.greenTrees }}</div>
-      </div>
-      <div class="inventory-row">
-        <canvas ref="icon3" :width="tileSize" :height="tileSize" class="inventory-icon reset-positioning"></canvas>
-        <div class="inventory-text">Funghi: {{ objectsGathered.mushrooms }}</div>
-      </div>
-    </div>
+    <inventory 
+      :canvas-width="canvasSize.width"
+      :canvas-height="canvasSize.height"
+      :objects-gathered="objectsGathered">
+    </inventory>
   </div>
 </template>
 
 <script>
 import OverlayScreen from './components/OverlayScreen.vue'
+import Inventory from './components/Inventory.vue';
 import { GameStatuses } from './utils/constants'
 
 export default {
   name: 'App',
   components: {
-    OverlayScreen
+    OverlayScreen,
+    Inventory
   },
   emit: ['start-game'],
   data() {
@@ -82,8 +72,7 @@ export default {
         a: false,
         s: false,
         d: false,
-        e: false,
-        i: false
+        e: false
       },
       animationFrames: {
         walk: 9,
@@ -98,7 +87,6 @@ export default {
       gameCtx: null,
       backgroundCtx: null,
       objectsCtx: null,
-      showInventory: true,
       gameStatus: GameStatuses.TOBESTARTED
     }
   },
@@ -129,7 +117,6 @@ export default {
       // Carica gli assets
       await this.loadTiles()
       await this.loadCharacterSprite()
-      this.drawInfoIcons()
     },
     async loadTiles() {
       // Carica la tilemap
@@ -142,28 +129,6 @@ export default {
       this.sprite = new Image()
       this.sprite.src = new URL(`./assets/sprite.png`, import.meta.url).href
       await this.sprite.decode()
-    },
-    drawInfoIcons() {
-      for (let i = 1; i <= 3; i++) {
-        const canvas = this.$refs['icon' + i]
-        if (canvas) {
-          const ctx = canvas.getContext('2d')
-          const tileIndex = this.availableTiles.objects[i - 1]
-          const { x: sourceX, y: sourceY } = this.getTileCoordinates(tileIndex)
-          
-          ctx.drawImage(
-            this.tilemapImage,
-            sourceX,
-            sourceY,
-            this.tileSize,
-            this.tileSize,
-            0,
-            0,
-            16,
-            16
-          )
-        }
-      }
     },
     initializeCanvas() {
       // Inizializza i contesti dei canvas
@@ -368,10 +333,6 @@ export default {
           this.keys.e = true
           this.actionOnNearestCollision()
           break
-        case 'i':
-          this.keys.i = true
-          this.showInventory = !this.showInventory
-          break
       }
     },
     keyUp(e) {
@@ -390,9 +351,6 @@ export default {
           break
         case 'e':
           this.keys.e = false
-          break
-        case 'i':
-          this.keys.i = false
           break
       }
     },
@@ -742,30 +700,6 @@ canvas {
 
 .align-left {
   text-align: left;
-}
-
-.inventory-panel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 250px;
-  background-color: rgba(0, 0, 0, 0.7);
-  padding: 20px;
-  color: white;
-  font-size: 16px;
-  margin-left: auto;
-  z-index: 4;
-}
-
-.inventory-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.inventory-icon {
-  margin-right: 10px;
-  image-rendering: pixelated;
 }
 
 /* Reset CSS per rimuovere margini e padding di default */
