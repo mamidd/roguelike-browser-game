@@ -19,8 +19,9 @@
 </template>
 
 <script setup>
-import { defineProps, onBeforeUnmount, ref, onMounted } from 'vue';
+import { defineProps, onBeforeUnmount, ref, onMounted, defineExpose } from 'vue';
 import { AvailableTiles, TileMapDimension } from '../utils/constants'
+import { useMapUtils } from '../composables/useMapUtils';
 
 defineOptions({
     name: 'Inventory'
@@ -34,12 +35,16 @@ defineProps({
     canvasHeight: {
         type: Number,
         required: true
-    },
-    objectsGathered: {
-        type: Object,
-        required: true
     }
 });
+
+const { getTileCoordinates } = useMapUtils()
+
+var objectsGathered = ref({
+    yellowTrees: 0,
+    greenTrees: 0,
+    mushrooms: 0
+})
 
 var showInventory = ref(true)
 const tileMapImage = ref(null)
@@ -102,15 +107,19 @@ const loadTiles = async () => {
     await tileMapImage.value.decode()
 }
 
-// TODO Può essere un composable
-const getTileCoordinates = (tileIndex) => {
-    // Calcola le coordinate x,y nella tilemap
-    const tileWithBorder = TileMapDimension.tileSize + TileMapDimension.tileBorder
-    // Non aggiungere il bordo iniziale, solo tra i tile
-    const x = (tileIndex % TileMapDimension.tilesPerRow) * tileWithBorder
-    const y = Math.floor(tileIndex / TileMapDimension.tilesPerRow) * tileWithBorder
-    return { x, y }
+const resetInventory = () => {
+  // Resetta l'inventario
+  objectsGathered.value = {
+    yellowTrees: 0,
+    greenTrees: 0,
+    mushrooms: 0
+  }
 }
+
+defineExpose({
+    objectsGathered,
+    resetInventory
+})
 </script>
 
 <style>

@@ -9,10 +9,13 @@
 <script setup>
     import { onMounted, onBeforeUnmount, ref, defineExpose } from 'vue';
     import { GameSize, TileMapDimension, AvailableTiles, PlayerSize } from '../utils/constants';
+    import { useMapUtils } from '../composables/useMapUtils';
 
     defineOptions({
         name: 'MapCanvas'
     });
+
+    const { getTileCoordinates, getViewportSize } = useMapUtils()
 
     var canvasSize = ref({
         width: GameSize.width,
@@ -74,7 +77,7 @@
       await spriteImage.decode()
     }
 
-    // TODO Potrebbe aver senso spostarlo sul padre
+    // Potrebbe aver senso spostarlo sul padre
     const setCanvasSize = () => {
       // Ottieni le dimensioni della viewport
       const {width: vw, height: vh} = getViewportSize()
@@ -89,14 +92,6 @@
       }
       
       canvasSize.value = newSize
-    }
-
-    // TODO Può essere un composable
-    const getViewportSize = () => {
-      return {
-        width: Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
-        height: Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
-      }
     }
 
     const addEventListner = () => {
@@ -124,8 +119,6 @@
         // Ridisegna lo sfondo nel prossimo tick per essere sicuri di avere la sprite disponibile nel render loop del browser
         requestAnimationFrame(drawBackground)
         requestAnimationFrame(drawObjects)
-        // TODO Centra il personaggio (da implementare qui dentro)
-        // this.centerPlayer()
       }
     }
 
@@ -233,16 +226,6 @@
       }
     }
 
-    // TODO Può essere un composable
-    const getTileCoordinates = (tileIndex) => {
-        // Calcola le coordinate x,y nella tilemap
-        const tileWithBorder = TileMapDimension.tileSize + TileMapDimension.tileBorder
-        // Non aggiungere il bordo iniziale, solo tra i tile
-        const x = (tileIndex % TileMapDimension.tilesPerRow) * tileWithBorder
-        const y = Math.floor(tileIndex / TileMapDimension.tilesPerRow) * tileWithBorder
-        return { x, y }
-    }
-
     const drawSprite = (playerX, playerY, playerFrameX, playerFrameY) => {
       // Pulisci il canvas del gioco
       context.game.clearRect(0, 0, canvasSize.value.width, canvasSize.value.height)
@@ -319,7 +302,6 @@
         drawSprite,
         clearObjectTile
     })
-
 </script>
 
 <style>

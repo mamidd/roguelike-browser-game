@@ -7,10 +7,9 @@
       @start-game="startGame">
     </overlay-screen>
     <map-canvas ref="mapCanvas"></map-canvas>
-    <inventory 
+    <inventory ref="inventory"
       :canvas-width="canvasSize.width"
-      :canvas-height="canvasSize.height"
-      :objects-gathered="objectsGathered">
+      :canvas-height="canvasSize.height">
     </inventory>
   </div>
 </template>
@@ -19,7 +18,7 @@
 import OverlayScreen from './components/OverlayScreen.vue'
 import Inventory from './components/Inventory.vue'
 import MapCanvas from './components/MapCanvas.vue'
-import { GameStatuses, TileMapDimension } from './utils/constants'
+import { GameStatuses, TileMapDimension, AvailableTiles } from './utils/constants'
 import { ref } from 'vue'
 import { usePlayer } from './composables/usePlayer'
 
@@ -36,24 +35,15 @@ export default {
 
     return {
       mapCanvas: ref(null),
+      inventory: ref(null),
       player,
       centerPlayer,
-      TileMapDimension
+      TileMapDimension,
+      AvailableTiles
     }
   },
   data() {
     return {
-      objectsGathered: {
-        yellowTrees: 0,
-        greenTrees: 0,
-        mushrooms: 0
-      },
-      availableTiles: {
-        ground: [0, 1, 2],
-        decoration: [39,40,41,42,43],
-        objects: [27,28,29],
-        traps: [105]
-      },
       keys: {
         w: false,
         a: false,
@@ -65,15 +55,10 @@ export default {
         walk: 9,
         idle: 6
       },
-      sprite: null,
-      background: null,
       animationFrame: null,
       lastTime: 0,
       characterAnimationFps: 12,
       frameTimer: 0,
-      gameCtx: null,
-      backgroundCtx: null,
-      objectsCtx: null,
       gameStatus: GameStatuses.TOBESTARTED
     }
   },
@@ -103,22 +88,11 @@ export default {
       // Event listeners per i tasti
       window.addEventListener('keydown', this.keyDown)
       window.addEventListener('keyup', this.keyUp)
-      // window.addEventListener('resize', this.updateCanvasSize)
     },
     removeEventListner() {
       // Rimuove gli event listener
       window.removeEventListener('keydown', this.keyDown)
       window.removeEventListener('keyup', this.keyUp)
-      // window.removeEventListener('resize', this.updateCanvasSize)
-    },
-    getTileCoordinates(tileIndex) {
-      // Calcola le coordinate x,y nella tilemap
-      const tilesPerRow = 12
-      const tileWithBorder = this.TileMapDimension.tileSize + this.TileMapDimension.tileBorder
-      // Non aggiungere il bordo iniziale, solo tra i tile
-      const x = (tileIndex % tilesPerRow) * tileWithBorder
-      const y = Math.floor(tileIndex / tilesPerRow) * tileWithBorder
-      return { x, y }
     },
     isCollidingWithObjects(x, y) {
       const { tileX, tileY } = this.getCollidingObject(x, y)
@@ -127,9 +101,9 @@ export default {
     getObjectType(tileX, tileY) {
       if(tileX === -1 && tileY === -1) return 'none'
 
-      if(this.availableTiles.objects.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'object'
+      if(this.AvailableTiles.objects.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'object'
 
-      if(this.availableTiles.traps.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'trap'
+      if(this.AvailableTiles.traps.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'trap'
 
       return 'none'
     },
@@ -179,7 +153,6 @@ export default {
       const tileStartY = Math.floor(y / this.TileMapDimension.tileSize)
       const tileEndY = Math.floor((y + playerFullHeight) / this.TileMapDimension.tileSize)
 
-      console.log(this.TileMapDimension.tileSize)
       // Controlla se le colonne centrali sono fuori dalla mappa
       if (tileStartY < 0 || tileEndY >= this.mapCanvas.objectTiles.length || 
           centerTileStartX < 0 || centerTileEndX >= this.mapCanvas.objectTiles[0].length) {
@@ -196,14 +169,14 @@ export default {
 
       // Incrementa il contatore appropriato in base al tipo di oggetto
       switch(object) {
-        case this.availableTiles.objects[0]: // 27 - Albero giallo
-          this.objectsGathered.yellowTrees++
+        case this.AvailableTiles.objects[0]: // 27 - Albero giallo
+          this.inventory.objectsGathered.yellowTrees++
           break
-        case this.availableTiles.objects[1]: // 28 - Albero verde
-          this.objectsGathered.greenTrees++
+        case this.AvailableTiles.objects[1]: // 28 - Albero verde
+          this.inventory.objectsGathered.greenTrees++
           break
-        case this.availableTiles.objects[2]: // 29 - Fungo
-          this.objectsGathered.mushrooms++
+        case this.AvailableTiles.objects[2]: // 29 - Fungo
+          this.inventory.objectsGathered.mushrooms++
           break
       }
 
@@ -401,17 +374,9 @@ export default {
       this.player.moving = false
       this.player.lastDirection = 'down'
     },
-    resetInventory() {
-      // Resetta l'inventario
-      this.objectsGathered = {
-        yellowTrees: 0,
-        greenTrees: 0,
-        mushrooms: 0
-      }
-    },
     startGame() {      
       this.gameStatus = GameStatuses.PLAYING
-      this.resetInventory()
+      this.inventory.resetInventory()
       this.mapCanvas.updateCanvasSize()
       this.centerPlayer(this.canvasSize.width, this.canvasSize.height)
       this.animate(0)
