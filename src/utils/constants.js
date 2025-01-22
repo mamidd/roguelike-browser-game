@@ -17,3 +17,13 @@ export const TileMapDimension = {
     tileSize: 16,
     tileBorder: 1
 }
+
+export const GameSize = {
+    width: 800,
+    height: 640
+}
+
+export const PlayerSize = {
+    width: 64,
+    height: 64
+}

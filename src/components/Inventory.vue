@@ -22,6 +22,10 @@
 import { defineProps, onBeforeUnmount, ref, onMounted } from 'vue';
 import { AvailableTiles, TileMapDimension } from '../utils/constants'
 
+defineOptions({
+    name: 'Inventory'
+});
+
 defineProps({
     canvasWidth: {
         type: Number,
@@ -98,6 +102,7 @@ const loadTiles = async () => {
     await tileMapImage.value.decode()
 }
 
+// TODO Può essere un composable
 const getTileCoordinates = (tileIndex) => {
     // Calcola le coordinate x,y nella tilemap
     const tileWithBorder = TileMapDimension.tileSize + TileMapDimension.tileBorder

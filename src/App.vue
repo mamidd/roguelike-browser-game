@@ -6,9 +6,7 @@
       :game-status="gameStatus"
       @start-game="startGame">
     </overlay-screen>
-    <canvas id="backgroundCanvas" ref="backgroundCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <canvas id="objectsCanvas" ref="objectsCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
-    <canvas id="gameCanvas" ref="gameCanvas" :width="canvasSize.width" :height="canvasSize.height"></canvas>
+    <map-canvas ref="mapCanvas"></map-canvas>
     <inventory 
       :canvas-width="canvasSize.width"
       :canvas-height="canvasSize.height"
@@ -19,43 +17,32 @@
 
 <script>
 import OverlayScreen from './components/OverlayScreen.vue'
-import Inventory from './components/Inventory.vue';
-import { GameStatuses } from './utils/constants'
+import Inventory from './components/Inventory.vue'
+import MapCanvas from './components/MapCanvas.vue'
+import { GameStatuses, TileMapDimension } from './utils/constants'
+import { ref } from 'vue'
+import { usePlayer } from './composables/usePlayer'
 
 export default {
   name: 'App',
   components: {
     OverlayScreen,
-    Inventory
+    Inventory,
+    MapCanvas
   },
   emit: ['start-game'],
+  setup() {
+    const { player, centerPlayer } = usePlayer()
+
+    return {
+      mapCanvas: ref(null),
+      player,
+      centerPlayer,
+      TileMapDimension
+    }
+  },
   data() {
     return {
-      player: {
-        x: 400,
-        y: 300,
-        width: 64,
-        height: 64,
-        speed: 5,
-        frameX: 0,
-        frameY: 14,
-        moving: false,
-        lastDirection: 'down'
-      },
-      gameSize: {
-        width: 800,
-        height: 640
-      },
-      canvasSize: {
-        width: 0,
-        height: 0
-      },
-      tileSize: 16,
-      tileBorder: 1,
-      tilemapImage: null,
-      tiles: [],
-      objectTiles: [],
-      totalObjects: 0,
       objectsGathered: {
         yellowTrees: 0,
         greenTrees: 0,
@@ -94,16 +81,15 @@ export default {
     frameInterval() {
       return 1000/this.characterAnimationFps
     },
+    canvasSize() {
+      return {
+        width: this.mapCanvas ? this.mapCanvas.canvasSize.width : 0,
+        height: this.mapCanvas? this.mapCanvas.canvasSize.height : 0
+      }
+    }
   },
   async mounted() {
-    // Initialize canvas and load assets
-    this.initializeCanvas()
-    await this.loadAssets()
-
-    // Set initial canvas size
-    this.setCanvasSize()
-
-    // Add event listeners
+    this.mapCanvas.updateCanvasSize()
     this.addEventListner()
   },
   beforeUnmount() {
@@ -113,48 +99,22 @@ export default {
     this.removeEventListner()
   },
   methods: {
-    async loadAssets() {
-      // Carica gli assets
-      await this.loadTiles()
-      await this.loadCharacterSprite()
-    },
-    async loadTiles() {
-      // Carica la tilemap
-      this.tilemapImage = new Image()
-      this.tilemapImage.src = new URL(`./assets/tilemap.png`, import.meta.url).href
-      await this.tilemapImage.decode()
-    },
-    async loadCharacterSprite() {
-      // Carica la sprite del personaggio
-      this.sprite = new Image()
-      this.sprite.src = new URL(`./assets/sprite.png`, import.meta.url).href
-      await this.sprite.decode()
-    },
-    initializeCanvas() {
-      // Inizializza i contesti dei canvas
-      const gameCanvas = this.$refs.gameCanvas
-      const backgroundCanvas = this.$refs.backgroundCanvas
-      const objectsCanvas = this.$refs.objectsCanvas
-      this.gameCtx = gameCanvas.getContext('2d')
-      this.backgroundCtx = backgroundCanvas.getContext('2d')
-      this.objectsCtx = objectsCanvas.getContext('2d')
-    },
     addEventListner() {
       // Event listeners per i tasti
       window.addEventListener('keydown', this.keyDown)
       window.addEventListener('keyup', this.keyUp)
-      window.addEventListener('resize', this.updateCanvasSize)
+      // window.addEventListener('resize', this.updateCanvasSize)
     },
     removeEventListner() {
       // Rimuove gli event listener
       window.removeEventListener('keydown', this.keyDown)
       window.removeEventListener('keyup', this.keyUp)
-      window.removeEventListener('resize', this.updateCanvasSize)
+      // window.removeEventListener('resize', this.updateCanvasSize)
     },
     getTileCoordinates(tileIndex) {
       // Calcola le coordinate x,y nella tilemap
       const tilesPerRow = 12
-      const tileWithBorder = this.tileSize + this.tileBorder
+      const tileWithBorder = this.TileMapDimension.tileSize + this.TileMapDimension.tileBorder
       // Non aggiungere il bordo iniziale, solo tra i tile
       const x = (tileIndex % tilesPerRow) * tileWithBorder
       const y = Math.floor(tileIndex / tilesPerRow) * tileWithBorder
@@ -167,24 +127,24 @@ export default {
     getObjectType(tileX, tileY) {
       if(tileX === -1 && tileY === -1) return 'none'
 
-      if(this.availableTiles.objects.includes(this.objectTiles[tileY][tileX])) return 'object'
+      if(this.availableTiles.objects.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'object'
 
-      if(this.availableTiles.traps.includes(this.objectTiles[tileY][tileX])) return 'trap'
+      if(this.availableTiles.traps.includes(this.mapCanvas.objectTiles[tileY][tileX])) return 'trap'
 
       return 'none'
     },
     getObjectsCollidingArea(x , y) {
       // Calcola l'area dei piedi (2 tile centrali della quarta riga)
-      const feetX = x + this.tileSize  // salta il primo tile
-      const feetY = y + this.tileSize * 3  // prendi l'ultima riga
-      const feetWidth = this.tileSize * 2  // larghezza di 2 tile
-      const feetHeight = this.tileSize  // altezza di 1 tile
+      const feetX = x + this.TileMapDimension.tileSize  // salta il primo tile
+      const feetY = y + this.TileMapDimension.tileSize * 3  // prendi l'ultima riga
+      const feetWidth = this.TileMapDimension.tileSize * 2  // larghezza di 2 tile
+      const feetHeight = this.TileMapDimension.tileSize  // altezza di 1 tile
 
       // Converti le coordinate dei piedi in coordinate della griglia per il controllo delle collisioni con oggetti
-      const startTileX = Math.floor(feetX / this.tileSize)
-      const startTileY = Math.floor(feetY / this.tileSize)
-      const endTileX = Math.floor((feetX + feetWidth) / this.tileSize)
-      const endTileY = Math.floor((feetY + feetHeight) / this.tileSize)
+      const startTileX = Math.floor(feetX / this.TileMapDimension.tileSize)
+      const startTileY = Math.floor(feetY / this.TileMapDimension.tileSize)
+      const endTileX = Math.floor((feetX + feetWidth) / this.TileMapDimension.tileSize)
+      const endTileY = Math.floor((feetY + feetHeight) / this.TileMapDimension.tileSize)
 
       // Log per DEBUG
       // console.log('NewX ' + x, 'NewY ' + y, 'FeetX ' + feetX, 'FeetY ' + feetY, 'startTileX ' + startTileX, 'startTileY ' + startTileY, 'endTileX ' + endTileX, 'endTileY ' + endTileY)
@@ -198,9 +158,9 @@ export default {
       for (let tileY = startTileY; tileY <= endTileY; tileY++) {
         for (let tileX = startTileX; tileX <= endTileX; tileX++) {
 
-          if(tileX > this.objectTiles[0].length - 1 || tileY > this.objectTiles.length - 1) continue
+          if(tileX > this.mapCanvas.objectTiles[0].length - 1 || tileY > this.mapCanvas.objectTiles.length - 1) continue
 
-          const tileValue = this.objectTiles[tileY][tileX]
+          const tileValue = this.mapCanvas.objectTiles[tileY][tileX]
           // Verifica che il tile non sia vuoto (-1)
           if (tileValue !== -1) {
             return { tileX, tileY }
@@ -212,16 +172,17 @@ export default {
     },
     isCollidingWithBorderCanvas(x, y) {
       // Controlla se le colonne centrali del player sono fuori dalla mappa
-      const playerCenterX = x + this.tileSize  // inizio delle colonne centrali
-      const playerFullHeight = 4 * this.tileSize  // altezza totale del player
-      const centerTileStartX = Math.floor(playerCenterX / this.tileSize)
-      const centerTileEndX = Math.floor((playerCenterX + this.tileSize * 2) / this.tileSize)
-      const tileStartY = Math.floor(y / this.tileSize)
-      const tileEndY = Math.floor((y + playerFullHeight) / this.tileSize)
+      const playerCenterX = x + this.TileMapDimension.tileSize  // inizio delle colonne centrali
+      const playerFullHeight = 4 * this.TileMapDimension.tileSize  // altezza totale del player
+      const centerTileStartX = Math.floor(playerCenterX / this.TileMapDimension.tileSize)
+      const centerTileEndX = Math.floor((playerCenterX + this.TileMapDimension.tileSize * 2) / this.TileMapDimension.tileSize)
+      const tileStartY = Math.floor(y / this.TileMapDimension.tileSize)
+      const tileEndY = Math.floor((y + playerFullHeight) / this.TileMapDimension.tileSize)
 
+      console.log(this.TileMapDimension.tileSize)
       // Controlla se le colonne centrali sono fuori dalla mappa
-      if (tileStartY < 0 || tileEndY >= this.objectTiles.length || 
-          centerTileStartX < 0 || centerTileEndX >= this.objectTiles[0].length) {
+      if (tileStartY < 0 || tileEndY >= this.mapCanvas.objectTiles.length || 
+          centerTileStartX < 0 || centerTileEndX >= this.mapCanvas.objectTiles[0].length) {
         return true
       }
 
@@ -231,7 +192,7 @@ export default {
       if ( this.getObjectType(tileX, tileY) === 'trap' || this.getObjectType(tileX, tileY) === 'none' ) return 
 
       // Ottieni il tipo di oggetto prima di rimuoverlo
-      const object = this.objectTiles[tileY][tileX]
+      const object = this.mapCanvas.objectTiles[tileY][tileX]
 
       // Incrementa il contatore appropriato in base al tipo di oggetto
       switch(object) {
@@ -247,72 +208,17 @@ export default {
       }
 
       // Rimuovi l'oggetto dal canvas degli oggetti
-      this.clearObjectTile(tileX, tileY)
+      this.mapCanvas.clearObjectTile(tileX, tileY)
 
       // Rimuovi l'oggetto quando c'è una collisione
-      this.objectTiles[tileY][tileX] = -1
+      this.mapCanvas.objectTiles[tileY][tileX] = -1
 
       // Decrementa il contatore degli oggetti
-      this.totalObjects--
+      this.mapCanvas.totalObjects--
 
       // Controlla se tutti gli oggetti sono stati rimossi
-      if (this.totalObjects === 0) {
+      if (this.mapCanvas.totalObjects === 0) {
         this.throwGameComplete()
-      }
-    },
-    clearObjectTile(tileX, tileY) {
-      // Pulisci il tile specifico nel canvas degli oggetti
-      this.objectsCtx.clearRect(
-        tileX * this.tileSize,
-        tileY * this.tileSize,
-        this.tileSize,
-        this.tileSize
-      )
-    },
-    generateRandomMap() {
-      // Pulisce la mappa esistente
-      this.tiles = []
-      this.objectTiles = []
-      this.totalObjects = 0
-
-      // Calcola il numero di tile necessari per riempire il canvas
-      const tilesX = Math.ceil(this.canvasSize.width / this.tileSize)
-      const tilesY = Math.ceil(this.canvasSize.height / this.tileSize)
-      
-      // Genera una mappa casuale
-      for (let y = 0; y < tilesY; y++) {
-        const row = []
-        const objectRow = []
-        for (let x = 0; x < tilesX; x++) {
-          // Determina il tipo di tile da generare
-          const rand = Math.random()
-          let tileArray
-          
-          if (rand < 0.003 && y > 3) { // 0.3% probabilità di trappole dopo la terza riga
-            tileArray = this.availableTiles.traps
-            const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
-            objectRow.push(tileIndex)
-            row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
-          } else if (rand < 0.013 && y > 3) { // 1% probabilità di oggetti fisici dopo la terza riga
-            tileArray = this.availableTiles.objects
-            const tileIndex = tileArray[Math.floor(Math.random() * tileArray.length)]
-            objectRow.push(tileIndex)
-            this.totalObjects++
-            row.push(this.availableTiles.ground[Math.floor(Math.random() * this.availableTiles.ground.length)])
-          } else if (rand < 0.113) { // 10% probabilità di decorazioni
-            tileArray = this.availableTiles.decoration
-            const randomIndex = Math.floor(Math.random() * tileArray.length)
-            row.push(tileArray[randomIndex])
-            objectRow.push(-1)
-          } else { // 80% probabilità di terreno
-            tileArray = this.availableTiles.ground
-            const randomIndex = Math.floor(Math.random() * tileArray.length)
-            row.push(tileArray[randomIndex])
-            objectRow.push(-1)
-          }
-        }
-        this.tiles.push(row)
-        this.objectTiles.push(objectRow)
       }
     },
     keyDown(e) {
@@ -404,12 +310,12 @@ export default {
       }
     },
     setNewPosition(newX, newY) {
-      this.player.x = newX
-      this.player.y = newY
+      this.player.position.x = newX
+      this.player.position.y = newY
     },
     getNewPosition() {
-      let newX = this.player.x
-      let newY = this.player.y
+      let newX = this.player.position.x
+      let newY = this.player.position.y
 
       switch(this.player.lastDirection) {
         case 'up':
@@ -447,110 +353,6 @@ export default {
       const maxFrames = this.player.moving ? this.animationFrames.walk : this.animationFrames.idle
       this.player.frameX = (this.player.frameX + 1) % maxFrames
     },
-    drawBackground() {    
-      // Pulisci il canvas di background
-      this.backgroundCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
-
-      // Disegna la mappa di tile sul canvas di background
-      for (let y = 0; y < this.tiles.length; y++) {
-        for (let x = 0; x < this.tiles[y].length; x++) {
-          const tileIndex = this.tiles[y][x]
-          const { x: sourceX, y: sourceY } = this.getTileCoordinates(tileIndex)
-          
-          this.backgroundCtx.drawImage(
-            this.tilemapImage,
-            sourceX,
-            sourceY,
-            this.tileSize,
-            this.tileSize,
-            x * this.tileSize,
-            y * this.tileSize,
-            this.tileSize,
-            this.tileSize
-          )
-        }
-      }
-    },
-    drawObjects() {
-      // Pulisci il canvas degli oggetti
-      this.objectsCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
-
-      // Disegna gli oggetti
-      for (let y = 0; y < this.objectTiles.length; y++) {
-        for (let x = 0; x < this.objectTiles[y].length; x++) {
-          const tileIndex = this.objectTiles[y][x]
-          if (tileIndex !== -1) {
-            const { x: srcX, y: srcY } = this.getTileCoordinates(tileIndex)
-            this.objectsCtx.drawImage(
-              this.tilemapImage,
-              srcX,
-              srcY,
-              this.tileSize,
-              this.tileSize,
-              x * this.tileSize,
-              y * this.tileSize,
-              this.tileSize,
-              this.tileSize
-            )
-          }
-        }
-      }
-    },
-    drawObjectsCollidingArea() {
-      // Prende le nuove coordinate in base all'ultima direzione di movimento
-      const { newX: x, newY: y } = this.getNewPosition()
-
-      // Calcola le celle della mappa per l'area di collisione
-      const { startTileX, startTileY, endTileX, endTileY } = this.getObjectsCollidingArea(x, y)
-
-      // Disegna l'area di collisione
-      this.gameCtx.fillStyle = 'rgba(255, 255, 0, 0.3)'
-      this.gameCtx.fillRect(
-        startTileX * this.tileSize, 
-        startTileY * this.tileSize, 
-        (endTileX - startTileX + 1) * this.tileSize, 
-        (endTileY - startTileY + 1) * this.tileSize
-      )
-    },
-    drawFeetArea() {
-      // Disegna il bordo della hitbox dei piedi
-      this.gameCtx.strokeStyle = 'red'
-      this.gameCtx.lineWidth = 1
-      this.gameCtx.strokeRect(
-        this.player.x + this.tileSize,  // x + 16 (salta il primo tile)
-        this.player.y + this.tileSize * 3,  // y + 48 (prendi l'ultima riga)
-        this.tileSize * 2,  // larghezza di 2 tile (32px)
-        this.tileSize  // altezza di 1 tile (16px)
-      )
-    },
-    drawSprite() {
-      // Pulisci il canvas del gioco
-      this.gameCtx.clearRect(0, 0, this.canvasSize.width, this.canvasSize.height)
-
-      // Disegna l'area dei piedi
-      this.drawFeetArea()
-
-      // Disegna l'area in cui calcola le collisioni (per DEBUG)
-      this.drawObjectsCollidingArea()
-
-      // Disegna il bordo della hitbox del personaggio
-      this.gameCtx.strokeStyle = 'black'
-      this.gameCtx.lineWidth = 2
-      this.gameCtx.strokeRect(this.player.x, this.player.y, this.player.width, this.player.height)
-
-      // Disegna il personaggio
-      this.gameCtx.drawImage(
-        this.sprite,
-        this.player.frameX * this.player.width,
-        this.player.frameY * this.player.height,
-        this.player.width,
-        this.player.height,
-        this.player.x,
-        this.player.y,
-        this.player.width,
-        this.player.height
-      )
-    },
     animate(timestamp) {
       const deltaTime = timestamp - this.lastTime
       this.lastTime = timestamp
@@ -563,58 +365,8 @@ export default {
       }
 
       this.movePlayer()
-      this.drawSprite()
+      this.mapCanvas.drawSprite(this.player.position.x, this.player.position.y, this.player.frameX, this.player.frameY)
       this.animationFrame = requestAnimationFrame(this.animate)
-    },
-    updateCanvasSize() {
-      // Imposta le dimensioni del canvas in base alla dimensione della viewport
-      this.setCanvasSize()
-
-      // Se i canvas esistono, aggiorna i context
-      if (this.gameCtx && this.backgroundCtx && this.objectsCtx) {
-        // Aggiorna le dimensioni dei canvas
-        this.changeCanvasSize(this.gameCtx)
-        this.changeCanvasSize(this.backgroundCtx)
-        this.changeCanvasSize(this.objectsCtx)
-
-        // Rigenera la mappa con le nuove dimensioni
-        this.generateRandomMap()
-        // Ridisegna lo sfondo nel prossimo tick per essere sicuri di avere la sprite disponibile nel render loop del browser
-        requestAnimationFrame(this.drawBackground)
-        requestAnimationFrame(this.drawObjects)
-        // Centra il personaggio
-        this.centerPlayer()
-      }
-    },
-    getViewportSize() {
-      return {
-        width: Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0),
-        height: Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0)
-      }
-    },
-    setCanvasSize() {
-      // Ottieni le dimensioni della viewport
-      const {width: vw, height: vh} = this.getViewportSize()
-
-      // Se la viewport é più alta che larga (modalità portrait)
-      const isPortrait = vh > vw
-      
-      // In modalità portrait invertiamo width e height del gioco
-      const newSize = {
-        width: isPortrait ? this.gameSize.height : this.gameSize.width,
-        height: isPortrait ? this.gameSize.width : this.gameSize.height
-      }
-      
-      this.canvasSize = newSize
-    },
-    changeCanvasSize(ctx) {
-      ctx.canvas.width = this.canvasSize.width
-      ctx.canvas.height = this.canvasSize.height
-    },
-    centerPlayer() {
-      // Calcola il centro del canvas
-      this.player.x = (this.canvasSize.width - this.player.width) / 2
-      this.player.y = (this.canvasSize.height - this.player.height) / 2
     },
     throwGameFailed() {
       this.gameStatus = GameStatuses.FAILED
@@ -660,7 +412,8 @@ export default {
     startGame() {      
       this.gameStatus = GameStatuses.PLAYING
       this.resetInventory()
-      this.updateCanvasSize()
+      this.mapCanvas.updateCanvasSize()
+      this.centerPlayer(this.canvasSize.width, this.canvasSize.height)
       this.animate(0)
     }
   }
@@ -680,18 +433,6 @@ canvas {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-}
-
-#backgroundCanvas {
-  z-index: 1;
-}
-
-#objectsCanvas {
-  z-index: 2;
-}
-
-#gameCanvas {
-  z-index: 3;
 }
 
 .align-center {
